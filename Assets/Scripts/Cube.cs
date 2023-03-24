@@ -1,29 +1,46 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
+    
 public class Cube : MonoBehaviour , IMessage<Vector3>
 {
     Vector3 data;
     byte[] byteData = new byte[3 * sizeof(float)];
+
+    public float speed = 5f;
+
+    void Start()
+    {
+        Debug.Log(Application.persistentDataPath);
+    }
 
     public Cube(Vector3 data)
     {
         this.data = data;
     }
 
+    void UpdateData()
+    {
+        data = transform.position;
+    }
+
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.W))
         {
+            transform.position += Vector3.forward * speed * Time.deltaTime;
+
+            data = transform.position;
+
+            byteData = Serialize();
+            transform.position = Deserialize(byteData);
+
             if (NetworkManager.Instance.isServer)
             {
-                Buffer.BlockCopy(new float[] { data.x, data.y, data.z }, 0, byteData, 0, byteData.Length);
                 NetworkManager.Instance.Broadcast(byteData);
             }
             else 
             {
-                Buffer.BlockCopy(new float[] { data.x, data.y, data.z }, 0, byteData, 0, byteData.Length);
                 NetworkManager.Instance.SendToServer(byteData);
             }
         }

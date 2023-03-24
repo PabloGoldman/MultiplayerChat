@@ -38,7 +38,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public Action<byte[], IPEndPoint> OnReceiveEvent;
 
-    private TcpConnection connection;
+    private UdpConnection connection;
 
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
@@ -49,7 +49,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         isServer = true;
         this.port = port;
-        connection = new TcpConnection("127.0.0.1", port, this);
+        connection = new UdpConnection(port, this);
     }
 
     public void StartClient(IPAddress ip, int port)
@@ -59,7 +59,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         this.port = port;
         this.ipAddress = ip;
 
-        connection = new TcpConnection("127.0.0.1", port, this);
+        connection = new UdpConnection(port, this);
 
         AddClient(new IPEndPoint(ip, port));
     }
