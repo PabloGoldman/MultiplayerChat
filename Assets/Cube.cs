@@ -5,6 +5,7 @@ using UnityEngine;
 public class Cube : MonoBehaviour , IMessage<Vector3>
 {
     Vector3 data;
+    byte[] byteData = new byte[3 * sizeof(float)];
 
     public Cube(Vector3 data)
     {
@@ -15,7 +16,16 @@ public class Cube : MonoBehaviour , IMessage<Vector3>
     {
         if (Input.GetKeyDown(KeyCode.W))
         {
-
+            if (NetworkManager.Instance.isServer)
+            {
+                Buffer.BlockCopy(new float[] { data.x, data.y, data.z }, 0, byteData, 0, byteData.Length);
+                NetworkManager.Instance.Broadcast(byteData);
+            }
+            else 
+            {
+                Buffer.BlockCopy(new float[] { data.x, data.y, data.z }, 0, byteData, 0, byteData.Length);
+                NetworkManager.Instance.SendToServer(byteData);
+            }
         }
     }
 
