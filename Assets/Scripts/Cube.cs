@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using UnityEngine;
-    
-public class Cube : MonoBehaviour , IMessage<Vector3>
+
+public class Cube : MonoBehaviour, IMessage<Vector3>
 {
     Vector3 data;
     byte[] byteData = new byte[3 * sizeof(float)];
@@ -12,6 +13,7 @@ public class Cube : MonoBehaviour , IMessage<Vector3>
     void Start()
     {
         Debug.Log(Application.persistentDataPath);
+        NetworkManager.Instance.OnReceiveEvent += OnReceiveDataEvent;
     }
 
     public Cube(Vector3 data)
@@ -19,30 +21,50 @@ public class Cube : MonoBehaviour , IMessage<Vector3>
         this.data = data;
     }
 
-    void UpdateData()
+    private void OnReceiveDataEvent(byte[] data, IPEndPoint ep)
     {
-        data = transform.position;
+        if (NetworkManager.Instance.isServer)
+        {
+            NetworkManager.Instance.Broadcast(data);
+        }
+
+        transform.position = Deserialize(data);
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.W))
+        if (Input.GetKey(KeyCode.W))
         {
-            transform.position += Vector3.forward * speed * Time.deltaTime;
+            MoveCube();
+            SendData();
+        }
 
-            data = transform.position;
+        if (Input.GetKeyDown(KeyCode.O))
+        {
+        }
+    }
 
-            byteData = Serialize();
-            transform.position = Deserialize(byteData);
+    void MoveCube()
+    {
+        transform.position += Vector3.forward * speed * Time.deltaTime;
+    }
 
-            if (NetworkManager.Instance.isServer)
-            {
-                NetworkManager.Instance.Broadcast(byteData);
-            }
-            else 
-            {
-                NetworkManager.Instance.SendToServer(byteData);
-            }
+    void SendData()
+    {
+        data = transform.position;
+
+        byteData = Serialize(); //Le pasamos la data del vector, a bytes
+        transform.position = Deserialize(byteData); //Pasamos la data en bytes, a tipo Vec3 y se la asignamos a la posicion
+
+        if (NetworkManager.Instance.isServer)
+        {
+            NetworkManager.Instance.Broadcast(byteData);
+            Debug.Log("isServer");
+        }
+        else
+        {
+            NetworkManager.Instance.SendToServer(byteData);
+            Debug.Log("isNotServer");
         }
     }
 

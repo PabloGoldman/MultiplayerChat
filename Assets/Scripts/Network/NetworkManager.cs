@@ -59,7 +59,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         this.port = port;
         this.ipAddress = ip;
 
-        connection = new UdpConnection(port, this);
+        connection = new UdpConnection(ip, port, this);
 
         AddClient(new IPEndPoint(ip, port));
     }
@@ -107,7 +107,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             while (iterator.MoveNext())
             {
-                connection.Send(data);
+                connection.Send(data, iterator.Current.Value.ipEndPoint);
             }
         }
     }

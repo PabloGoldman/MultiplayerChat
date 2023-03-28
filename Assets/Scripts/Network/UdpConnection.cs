@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using UnityEngine;
 
 public class UdpConnection
 {
@@ -57,7 +56,6 @@ public class UdpConnection
 
     private void OnReceive(IAsyncResult ar)
     {
-        Debug.Log("Recibido");
         try
         {
             DataReceived dataReceived = new DataReceived();
