@@ -43,7 +43,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
-    int clientId = 0; // This id should be generated during first handshake
+    public int clientId = 0; // This id should be generated during first handshake
+
+    // Prefab del cubo que se va a generar al conectarse un cliente
+    public GameObject cubePrefab;
 
     public void StartServer(int port)
     {
@@ -64,7 +67,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         AddClient(new IPEndPoint(ip, port));
     }
 
-    private void AddClient(IPEndPoint ip)
+    public void AddClient(IPEndPoint ip)
     {
         if (!ipToId.ContainsKey(ip))
         {
@@ -76,7 +79,17 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             clients.Add(clientId, new Client(ip, id, Time.realtimeSinceStartup));
 
             clientId++;
+
+            // Se genera un cubo para el cliente que se acaba de conectar
+            GenerateCubeForClient(id);
         }
+    }
+
+    private void GenerateCubeForClient(int clientId)
+    {
+        GameObject cube = Instantiate(cubePrefab);
+        cube.name = "Cube_" + clientId;
+        cube.GetComponent<Cube>().clientId = clientId;
     }
 
     private void RemoveClient(IPEndPoint ip)
@@ -85,6 +98,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             Debug.Log("Removing client: " + ip.Address);
             clients.Remove(ipToId[ip]);
+
+            // Se destruye el cubo del cliente que se desconectó
+            Destroy(GameObject.Find("Cube_" + ipToId[ip]));
         }
     }
 
@@ -99,6 +115,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public void SendToServer(byte[] data)
     {
         connection.Send(data);
+    }
+
+    public void Broadcast(byte[] data, IPEndPoint ip)
+    {
+        connection.Send(data, ip);
     }
 
     public void Broadcast(byte[] data)

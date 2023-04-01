@@ -26,7 +26,6 @@ public class NetHandShake : IMessage<(long, int)>
         List<byte> outData = new List<byte>();
 
         outData.AddRange(BitConverter.GetBytes((int)GetMessageType()));
-
         outData.AddRange(BitConverter.GetBytes(data.Item1));
         outData.AddRange(BitConverter.GetBytes(data.Item2));
 
