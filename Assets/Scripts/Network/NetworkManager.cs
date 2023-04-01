@@ -90,6 +90,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         GameObject cube = Instantiate(cubePrefab);
         cube.name = "Cube_" + clientId;
         cube.GetComponent<Cube>().clientId = clientId;
+        ServerGameManager.Instance.AddCubeToDictionary(clientId, cube);
     }
 
     private void RemoveClient(IPEndPoint ip)

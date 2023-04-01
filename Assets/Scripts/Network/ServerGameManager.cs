@@ -10,8 +10,6 @@ public class ServerGameManager : MonoBehaviourSingleton<ServerGameManager>
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
-    private int clientId = 0;
-
     private void Start()
     {
         NetworkManager.Instance.OnReceiveEvent += OnReceiveData;
@@ -26,23 +24,27 @@ public class ServerGameManager : MonoBehaviourSingleton<ServerGameManager>
     private void OnReceiveData(byte[] data, IPEndPoint ip)
     {
         // Deserialize NetMessage and check if message is fresh
-        MessageChecker messageChecker = new MessageChecker();
+        //MessageChecker messageChecker = new MessageChecker();
 
         //if (!IsFreshMessage(netMessage))
         //    return;
 
         int clientId = 0;
 
-        clientId = messageChecker.CheckClientId(data);
+        clientId = MessageChecker.Instance.CheckClientId(data);
 
-        switch (messageChecker.CheckMessageType(data))
+        Debug.Log(clientId);
+
+        switch (MessageChecker.Instance.CheckMessageType(data))
         {
             case MessageType.HandShake:
+                Debug.Log("HandShake");
                 AddClient(ip, clientId);
                 break;
             case MessageType.Console:
                 break;
             case MessageType.Position:
+                Debug.Log("Position");
                 UpdateCubePosition(clientId, data);
                 break;
             default:
@@ -75,8 +77,19 @@ public class ServerGameManager : MonoBehaviourSingleton<ServerGameManager>
         }
     }
 
+    public void AddCubeToDictionary(int clientId, GameObject cube)
+    {
+        cubes.Add(clientId, cube);
+    }
+
     private void UpdateCubePosition(int clientId, byte[] payload)
     {
+        if (!cubes.ContainsKey(clientId))
+        {
+            Debug.LogWarning("Cube for client ID " + clientId + " not found in the dictionary.");
+            return;
+        }
+
         // Get the cube GameObject for the client
         GameObject cube = cubes[clientId];
 

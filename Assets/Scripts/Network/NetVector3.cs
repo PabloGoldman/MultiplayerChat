@@ -19,6 +19,11 @@ public class NetVector3 : IMessage<UnityEngine.Vector3>
         this.data = Deserialize(data);
     }
 
+    public void SetClientId(int id)
+    {
+        clientId = id;
+    }
+
     public Vector3 GetData()
     {
         return data;

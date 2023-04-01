@@ -7,18 +7,26 @@ public class Cube : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKey(KeyCode.W))
+        if (!NetworkManager.Instance.isServer)
         {
-            MoveCube(speed);
-        }
+            if (Input.GetKey(KeyCode.W))
+            {
+                MoveCube(speed);
+            }
 
-        if (Input.GetKey(KeyCode.S))
-        {
-            MoveCube(-speed);
+            if (Input.GetKey(KeyCode.S))
+            {
+                MoveCube(-speed);
+            }
         }
 
         // Send the position of the cube to the server
         SendPosition();
+    }
+
+    public void SetClientId(int id)
+    {
+        clientId = id;
     }
 
     void MoveCube(float speed)
@@ -29,6 +37,7 @@ public class Cube : MonoBehaviour
     void SendPosition()
     {
         NetVector3 netVector3 = new NetVector3(transform.position);
+        netVector3.SetClientId(clientId);
         NetworkManager.Instance.SendToServer(netVector3.Serialize());
     }
 }
