@@ -9,19 +9,20 @@ public class Cube : MonoBehaviour
     {
         if (!NetworkManager.Instance.isServer)
         {
-            if (Input.GetKey(KeyCode.W))
+            if (Input.GetKey(KeyCode.D))
             {
                 MoveCube(speed);
             }
 
-            if (Input.GetKey(KeyCode.S))
+            if (Input.GetKey(KeyCode.A))
             {
                 MoveCube(-speed);
             }
-        }
 
         // Send the position of the cube to the server
-        SendPosition();
+            SendPosition();
+        }
+
     }
 
     public void SetClientId(int id)
@@ -31,7 +32,7 @@ public class Cube : MonoBehaviour
 
     void MoveCube(float speed)
     {
-        transform.position += Vector3.forward * speed * Time.deltaTime;
+        transform.position += Vector3.right * speed * Time.deltaTime;
     }
 
     void SendPosition()

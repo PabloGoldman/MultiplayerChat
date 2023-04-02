@@ -43,10 +43,13 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
-    public int clientId = 0; // This id should be generated during first handshake
 
     // Prefab del cubo que se va a generar al conectarse un cliente
     public GameObject cubePrefab;
+    private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
+
+    [SerializeField] int clientId; // This id should be generated during first handshake
+
 
     public void StartServer(int port)
     {
@@ -64,6 +67,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         connection = new UdpConnection(ip, port, this);
 
+    
+        NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
+        handShakeMesage.SetClientId(clientId);
+        SendToServer(handShakeMesage.Serialize());
+
         AddClient(new IPEndPoint(ip, port));
     }
 
@@ -73,15 +81,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             Debug.Log("Adding client: " + ip.Address);
 
-            int id = clientId;
-            ipToId[ip] = clientId;
+            //ipToId[ip] = clientId;
 
-            clients.Add(clientId, new Client(ip, id, Time.realtimeSinceStartup));
-
-            clientId++;
+            clients.Add(clientId, new Client(ip, clientId, Time.realtimeSinceStartup));
 
             // Se genera un cubo para el cliente que se acaba de conectar
-            GenerateCubeForClient(id);
+            GenerateCubeForClient(clientId);
+
+            //clientId++;
         }
     }
 
@@ -90,7 +97,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         GameObject cube = Instantiate(cubePrefab);
         cube.name = "Cube_" + clientId;
         cube.GetComponent<Cube>().clientId = clientId;
-        ServerGameManager.Instance.AddCubeToDictionary(clientId, cube);
+        cubes.Add(clientId, cube);
     }
 
     private void RemoveClient(IPEndPoint ip)
@@ -107,10 +114,39 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
-        AddClient(ip);
+        //AddClient(ip);
 
-        if (OnReceiveEvent != null)
-            OnReceiveEvent.Invoke(data, ip);
+        //if (OnReceiveEvent != null)
+        //    OnReceiveEvent.Invoke(data, ip);
+
+        clientId = MessageChecker.Instance.CheckClientId(data);
+
+        switch (MessageChecker.Instance.CheckMessageType(data))
+        {
+            case MessageType.HandShake:
+
+                NetHandShake handShake = new NetHandShake(data);
+                IPEndPoint newIp = new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2);
+                
+                if (ip != newIp)
+                {
+                    AddClient(ip);
+                }
+
+                break;
+            case MessageType.Console:
+
+                break;
+            case MessageType.Position:
+
+                UpdateCubePosition(clientId, data);
+
+                break;
+
+            default:
+                
+                break;
+        }
     }
 
     public void SendToServer(byte[] data)
@@ -140,4 +176,44 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         if (connection != null)
             connection.FlushReceiveData();
     }
+
+    private void UpdateCubePosition(int clientId, byte[] payload)
+    {
+        if (!cubes.ContainsKey(clientId))
+        {
+            Debug.LogWarning("Cube for client ID " + clientId + " not found in the dictionary.");
+            return;
+        }
+
+        // Get the cube GameObject for the client
+        GameObject cube = cubes[clientId];
+
+        // Deserialize the payload into a NetVector3
+        NetVector3 netPosition = new NetVector3(payload);
+
+        // Set the cube's position to the position received from the client
+        cube.transform.position = netPosition.GetData();
+
+        // Broadcast the cube's position to all other clients
+        BroadcastCubePosition(clientId, payload);
+    }
+
+    private void BroadcastCubePosition(int senderClientId, byte[] payload)
+    {
+        // Iterate through all clients and send the position update to each client
+        using (var iterator = clients.GetEnumerator())
+        {
+            while (iterator.MoveNext())
+            {
+                int receiverClientId = iterator.Current.Key;
+
+                // No te automandes tu propio movimiento
+                if (receiverClientId != senderClientId)
+                {
+                    Broadcast(payload, clients[receiverClientId].ipEndPoint);
+                }
+            }
+        }
+    }
+
 }

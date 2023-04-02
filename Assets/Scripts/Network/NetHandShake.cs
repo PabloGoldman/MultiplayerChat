@@ -9,12 +9,15 @@ public class NetHandShake : IMessage<(long, int)>
     //int = puerto
 
     int clientId;
-
     (long, int) data;
 
     public NetHandShake((long, int) data)
     {
         this.data = data;
+    }
+    public NetHandShake(byte[] data)
+    {
+        this.data = Deserialize(data);
     }
 
     public (long, int) Deserialize(byte[] message)
@@ -37,12 +40,18 @@ public class NetHandShake : IMessage<(long, int)>
         return MessageType.HandShake;
     }
 
+    public (long, int) getData()
+    {
+        return data;
+    }
+
     public byte[] Serialize()
     {
         List<byte> outData = new List<byte>();
 
         outData.AddRange(BitConverter.GetBytes((int)GetMessageType()));
         outData.AddRange(BitConverter.GetBytes(clientId));
+
         outData.AddRange(BitConverter.GetBytes(data.Item1));
         outData.AddRange(BitConverter.GetBytes(data.Item2));
 
