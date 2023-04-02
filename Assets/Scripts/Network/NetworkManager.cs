@@ -49,7 +49,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
 
     [SerializeField] int clientId; // This id should be generated during first handshake
-
+    static int lastMessageRead = 0;
 
     public void StartServer(int port)
     {
@@ -67,7 +67,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         connection = new UdpConnection(ip, port, this);
 
-    
         NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
         handShakeMesage.SetClientId(clientId);
         SendToServer(handShakeMesage.Serialize());
@@ -88,7 +87,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             // Se genera un cubo para el cliente que se acaba de conectar
             GenerateCubeForClient(clientId);
 
-            //clientId++;
+            clientId++;
         }
     }
 
@@ -126,11 +125,13 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             case MessageType.HandShake:
 
                 NetHandShake handShake = new NetHandShake(data);
+                handShake.SetClientId(clientId);
                 IPEndPoint newIp = new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2);
-                
+
                 if (ip != newIp)
                 {
                     AddClient(ip);
+                    // BroadcastCubePosition(clientId, handShake.Serialize());
                 }
 
                 break;
@@ -139,12 +140,23 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 break;
             case MessageType.Position:
 
-                UpdateCubePosition(clientId, data);
+                lastMessageRead++;
+                int currentMessage = NetVector3.GetLastMessage();
+
+                if (lastMessageRead < currentMessage)
+                {
+                    Debug.Log("Se perdio el mensaje = " + lastMessageRead);
+                    lastMessageRead = currentMessage;
+                }
+                else
+                {
+                    UpdateCubePosition(clientId, data);
+                }
 
                 break;
 
             default:
-                
+
                 break;
         }
     }
@@ -185,11 +197,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             return;
         }
 
+
+
         // Get the cube GameObject for the client
         GameObject cube = cubes[clientId];
 
         // Deserialize the payload into a NetVector3
         NetVector3 netPosition = new NetVector3(payload);
+
 
         // Set the cube's position to the position received from the client
         cube.transform.position = netPosition.GetData();

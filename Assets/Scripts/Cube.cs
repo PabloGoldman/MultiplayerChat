@@ -40,5 +40,7 @@ public class Cube : MonoBehaviour
         NetVector3 netVector3 = new NetVector3(transform.position);
         netVector3.SetClientId(clientId);
         NetworkManager.Instance.SendToServer(netVector3.Serialize());
+
+        NetVector3.SetLastMessage(NetVector3.GetLastMessage() + 1);
     }
 }
