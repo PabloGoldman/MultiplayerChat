@@ -113,12 +113,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
-        //AddClient(ip);
 
         //if (OnReceiveEvent != null)
         //    OnReceiveEvent.Invoke(data, ip);
 
-        clientId = MessageChecker.Instance.CheckClientId(data);
+        int clientId = MessageChecker.Instance.CheckClientId(data);
 
         switch (MessageChecker.Instance.CheckMessageType(data))
         {
@@ -128,11 +127,18 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 handShake.SetClientId(clientId);
                 IPEndPoint newIp = new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2);
 
-                if (ip != newIp)
+                //if (ip != newIp)
+                if (!ipToId.ContainsKey(newIp))
                 {
-                    AddClient(ip);
-                    // BroadcastCubePosition(clientId, handShake.Serialize());
+                    AddClient(newIp);
+                //  BroadcastCubePosition(clientId, handShake.Serialize());
                 }
+                else
+                {
+                    Debug.Log("Es el mismo cliente");
+                }
+               
+                
 
                 break;
             case MessageType.Console:
@@ -145,20 +151,29 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (lastMessageRead < currentMessage)
                 {
-                    Debug.Log("Se perdio el mensaje = " + lastMessageRead);
+                    // Debug.Log("Se perdio el mensaje = " + lastMessageRead);
                     lastMessageRead = currentMessage;
                 }
                 else
                 {
-                    UpdateCubePosition(clientId, data);
+                    UpdateCubePosition(cubes[clientId].GetComponent<Cube>().clientId, data);
                 }
 
                 break;
 
             default:
 
+                Debug.Log("No llego ningun dato con \"MessaggeType\"");
+
                 break;
         }
+
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            Debug.Log("Entra");
+        }
+
+
     }
 
     public void SendToServer(byte[] data)
@@ -197,8 +212,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             return;
         }
 
-
-
         // Get the cube GameObject for the client
         GameObject cube = cubes[clientId];
 
@@ -230,5 +243,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             }
         }
     }
+
+
+
 
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using UnityEngine;
 
 public class Cube : MonoBehaviour
@@ -19,7 +20,7 @@ public class Cube : MonoBehaviour
                 MoveCube(-speed);
             }
 
-        // Send the position of the cube to the server
+            // Send the position of the cube to the server
             SendPosition();
         }
 
@@ -37,10 +38,14 @@ public class Cube : MonoBehaviour
 
     void SendPosition()
     {
-        NetVector3 netVector3 = new NetVector3(transform.position);
-        netVector3.SetClientId(clientId);
-        NetworkManager.Instance.SendToServer(netVector3.Serialize());
+        if (Input.GetKeyDown(KeyCode.L))
+        {
 
-        NetVector3.SetLastMessage(NetVector3.GetLastMessage() + 1);
+            NetVector3 netVector3 = new NetVector3(transform.position);
+            netVector3.SetClientId(clientId);
+
+            NetworkManager.Instance.SendToServer(netVector3.Serialize());
+            NetVector3.SetLastMessage(NetVector3.GetLastMessage() + 1);
+        }
     }
 }
