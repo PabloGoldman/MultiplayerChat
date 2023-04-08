@@ -69,9 +69,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         connection = new UdpConnection(ip, port, this);
 
-        AddClient(new IPEndPoint(ip, port));
-
-     NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
+        NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
         handShakeMesage.SetClientId(clientId);
         SendToServer(handShakeMesage.Serialize());
 
@@ -82,7 +80,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
 
         AddClient(new IPEndPoint(ip, port));
-       // Broadcast(data, new IPEndPoint(ip, port));
+        // Broadcast(data, new IPEndPoint(ip, port));
 
     }
 
@@ -96,6 +94,23 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             // Se genera un cubo para el cliente que se acaba de conectar
             GenerateCubeForClient(clientId);
+
+            // Send a greeting message to other clients
+            using (var iterator = clients.GetEnumerator())
+            {
+                while (iterator.MoveNext())
+                {
+                    int receiverClientId = iterator.Current.Key;
+                    if (receiverClientId != cubes[actualClientId].GetComponent<Cube>().clientId)
+                    {
+                        NetHandShake handShakeMesage = new NetHandShake((ip.Address.Address,ip.Port));
+                        handShakeMesage.SetClientId(cubes[actualClientId].GetComponent<Cube>().clientId);
+                        Broadcast(handShakeMesage.Serialize(), iterator.Current.Value.ipEndPoint);
+                    }
+                }
+            }
+
+
 
             clientId++;
         }
