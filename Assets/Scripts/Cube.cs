@@ -16,6 +16,10 @@ public class Cube : MonoBehaviour
     {
         if (!NetworkManager.Instance.isServer)
         {
+            if (NetworkManager.Instance.)
+            {
+
+            }
             if (Input.GetKey(KeyCode.D))
             {
                 MoveCube(speed);

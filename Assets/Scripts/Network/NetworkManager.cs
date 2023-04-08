@@ -43,7 +43,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
-
     // Prefab del cubo que se va a generar al conectarse un cliente
     public GameObject cubePrefab;
     private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
@@ -208,7 +207,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             connection.FlushReceiveData();
     }
 
-    private void UpdateCubePosition(int clientId, byte[] payload)
+    private void UpdateCubePosition(int clientId, byte[] data)
     {
         if (!cubes.ContainsKey(clientId))
         {
@@ -220,17 +219,17 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         GameObject cube = cubes[clientId];
 
         // Deserialize the payload into a NetVector3
-        NetVector3 netPosition = new NetVector3(payload);
+        NetVector3 netPosition = new NetVector3(data);
 
 
         // Set the cube's position to the position received from the client
         cube.transform.position = netPosition.GetData();
 
         // Broadcast the cube's position to all other clients
-        BroadcastCubePosition(clientId, payload);
+        BroadcastCubePosition(clientId, data);
     }
 
-    private void BroadcastCubePosition(int senderClientId, byte[] payload)
+    private void BroadcastCubePosition(int senderClientId, byte[] data)
     {
         // Iterate through all clients and send the position update to each client
         using (var iterator = clients.GetEnumerator())
@@ -242,7 +241,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 // No te automandes tu propio movimiento
                 if (receiverClientId != senderClientId)
                 {
-                    Broadcast(payload, clients[receiverClientId].ipEndPoint);
+                    Broadcast(data, clients[receiverClientId].ipEndPoint);
                 }
             }
         }
