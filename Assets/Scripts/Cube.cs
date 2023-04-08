@@ -16,20 +16,22 @@ public class Cube : MonoBehaviour
     {
         if (!NetworkManager.Instance.isServer)
         {
-            if (Input.GetKey(KeyCode.D))
+            if (NetworkManager.Instance.actualClientId == clientId)
             {
-                MoveCube(speed);
-            }
+                if (Input.GetKey(KeyCode.D))
+                {
+                    MoveCube(speed);
+                }
 
-            if (Input.GetKey(KeyCode.A))
-            {
-                MoveCube(-speed);
-            }
+                if (Input.GetKey(KeyCode.A))
+                {
+                    MoveCube(-speed);
+                }
 
-            // Send the position of the cube to the server
-            SendPosition();
+                // Send the position of the cube to the server
+                SendPosition();
+            }
         }
-
     }
 
     public void SetClientId(int id)
