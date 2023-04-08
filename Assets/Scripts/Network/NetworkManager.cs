@@ -40,6 +40,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private UdpConnection connection;
 
+    bool alreadyAddedClient;
+    public int actualClientId = 0;
+
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
@@ -47,7 +50,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public GameObject cubePrefab;
     private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
 
-    [SerializeField] int clientId; // This id should be generated during first handshake
+    public int clientId; // This id should be generated during first handshake
     static int lastMessageRead = 0;
 
     public void StartServer(int port)
@@ -70,6 +73,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         handShakeMesage.SetClientId(clientId);
         SendToServer(handShakeMesage.Serialize());
 
+        if (!alreadyAddedClient)
+        {
+            actualClientId = clientId;
+            alreadyAddedClient = true;
+        }
+
         AddClient(new IPEndPoint(ip, port));
     }
 
@@ -78,8 +87,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         if (!ipToId.ContainsKey(ip))
         {
             Debug.Log("Adding client: " + ip.Address);
-
-            //ipToId[ip] = clientId;
 
             clients.Add(clientId, new Client(ip, clientId, Time.realtimeSinceStartup));
 
@@ -127,9 +134,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 //if (ip != newIp)
                 if (!clients.ContainsKey(clientId))
                 {
-                   // AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2));
+                    // AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2));
                     AddClient(ip);
-                    
+
                     BroadcastCubePosition(clientId, handShake.Serialize());
                 }
                 else
@@ -176,7 +183,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             net.SetClientId(1);
             Broadcast(net.Serialize(), clients[1].ipEndPoint);
         }
-    
+
     }
 
     public void SendToServer(byte[] data)
