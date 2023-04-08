@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
@@ -69,7 +69,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         connection = new UdpConnection(ip, port, this);
 
-        NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
+        AddClient(new IPEndPoint(ip, port));
+
+     NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
         handShakeMesage.SetClientId(clientId);
         SendToServer(handShakeMesage.Serialize());
 
@@ -80,6 +82,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
 
         AddClient(new IPEndPoint(ip, port));
+       // Broadcast(data, new IPEndPoint(ip, port));
+
     }
 
     public void AddClient(IPEndPoint ip)
@@ -119,8 +123,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
-        if (OnReceiveEvent != null)
-            OnReceiveEvent.Invoke(data, ip);
+        //if (OnReceiveEvent != null)
+        //    OnReceiveEvent.Invoke(data, ip);
 
         int clientId = MessageChecker.Instance.CheckClientId(data);
 
@@ -131,7 +135,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 NetHandShake handShake = new NetHandShake(data);
                 handShake.SetClientId(clientId);
 
-                //if (ip != newIp)
                 if (!clients.ContainsKey(clientId))
                 {
                     // AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2));
