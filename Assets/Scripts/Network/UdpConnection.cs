@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
+
 public class UdpConnection
 {
     private struct DataReceived
@@ -43,6 +44,7 @@ public class UdpConnection
 
     public void FlushReceiveData()
     {
+
         lock (handler)
         {
             while (dataReceivedQueue.Count > 0)

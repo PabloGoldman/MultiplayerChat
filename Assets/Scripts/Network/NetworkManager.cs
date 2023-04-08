@@ -113,9 +113,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
-
-        //if (OnReceiveEvent != null)
-        //    OnReceiveEvent.Invoke(data, ip);
+        if (OnReceiveEvent != null)
+            OnReceiveEvent.Invoke(data, ip);
 
         int clientId = MessageChecker.Instance.CheckClientId(data);
 
@@ -125,20 +124,19 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 NetHandShake handShake = new NetHandShake(data);
                 handShake.SetClientId(clientId);
-                IPEndPoint newIp = new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2);
 
                 //if (ip != newIp)
-                if (!ipToId.ContainsKey(newIp))
+                if (!clients.ContainsKey(clientId))
                 {
-                    AddClient(newIp);
-                //  BroadcastCubePosition(clientId, handShake.Serialize());
+                   // AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2));
+                    AddClient(ip);
+                    
+                    BroadcastCubePosition(clientId, handShake.Serialize());
                 }
                 else
                 {
                     Debug.Log("Es el mismo cliente");
                 }
-               
-                
 
                 break;
             case MessageType.Console:
@@ -146,7 +144,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 break;
             case MessageType.Position:
 
-                lastMessageRead++;
+                lastMessageRead++; //Tengo qe guardar un diccionario para saber qe cliente es el ultimo mensaje
                 int currentMessage = NetVector3.GetLastMessage();
 
                 if (lastMessageRead < currentMessage)
@@ -168,12 +166,18 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 break;
         }
 
-        if (Input.GetKeyDown(KeyCode.K))
+        if (!isServer)
         {
-            Debug.Log("Entra");
+            Debug.Log("Esta recibiendo datos un cliente");
         }
 
-
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            NetVector3 net = new NetVector3(Vector3.zero);
+            net.SetClientId(1);
+            Broadcast(net.Serialize(), clients[1].ipEndPoint);
+        }
+    
     }
 
     public void SendToServer(byte[] data)
