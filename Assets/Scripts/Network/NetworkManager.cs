@@ -92,6 +92,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                     NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
                     netNewCoustomer.SetClientId(i);
                     Broadcast(netNewCoustomer.Serialize()); //Tengo qe mandar la posicion en la qe esta el cubito tmb.  
+
+                    NetVector3 netVector3 = new NetVector3(cubes[i].GetComponent<Transform>().position);
+                    UpdateCubePosition(i, netVector3.Serialize());
                 }
             }
         }
