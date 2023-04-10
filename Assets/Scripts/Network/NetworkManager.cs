@@ -91,7 +91,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
                     netNewCoustomer.SetClientId(i);
-                    Broadcast(netNewCoustomer.Serialize()); //Tengo qe mandar la posicion en la qe esta el cubito tmb.
+                    Broadcast(netNewCoustomer.Serialize()); //Tengo qe mandar la posicion en la qe esta el cubito tmb.  
                 }
             }
         }
@@ -259,7 +259,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 // No te automandes tu propio movimiento
                 if (receiverClientId != senderClientId)
                 {
+                    if (clients[receiverClientId].ipEndPoint.Equals(clients[senderClientId].ipEndPoint)) continue;
                     Broadcast(data, clients[receiverClientId].ipEndPoint);
+
                 }
             }
         }
