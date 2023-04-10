@@ -50,7 +50,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public int serverClientId = 0; // This id should be generated during first handshake
     public int actualClientId = 0;
-    static int lastMessageRead = 0;
+    static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
     public void StartServer(int port)
     {
@@ -80,23 +80,16 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             Debug.Log("Adding client: " + ip.Address);
 
             clients.Add(newClientID, new Client(ip, newClientID, Time.realtimeSinceStartup));
+            lastMessageRead.Add(newClientID, 0);
 
             // Se genera un cubo para el cliente que se acaba de conectar
             GenerateCubeForClient(newClientID);
 
-            // Send a greeting message to other clients
-            using (var iterator = clients.GetEnumerator())
+            for (int i = 0; i < clients.Count; i++)
             {
-                while (iterator.MoveNext())
-                {
-                    int receiverClientId = iterator.Current.Key;
-                    if (receiverClientId != newClientID)
-                    {
-                        NetHandShake handShakeMesage = new NetHandShake((ip.Address.Address, ip.Port));
-                        handShakeMesage.SetClientId(newClientID);
-                        Broadcast(handShakeMesage.Serialize(), iterator.Current.Value.ipEndPoint);
-                    }
-                }
+                NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
+                netNewCoustomer.SetClientId(i);
+                Broadcast(netNewCoustomer.Serialize());
             }
         }
     }
@@ -139,6 +132,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                     Broadcast(netSetClientID.Serialize(), ip);
 
                     AddClient(ip, serverClientId);
+                    //AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2), serverClientId);
+
 
                     NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice(handShake.getData());
                     netNewCoustomer.SetClientId(serverClientId);
@@ -160,7 +155,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 if (!clients.ContainsKey(messageId))
                 {
                     NetNewCoustomerNotice NewCoustomer = new NetNewCoustomerNotice(data);
-                    AddClient(new IPEndPoint(NewCoustomer.getData().Item1, NewCoustomer.getData().Item2), messageId);
+                    //AddClient(new IPEndPoint(NewCoustomer.getData().Item1, NewCoustomer.getData().Item2), messageId);
+                    AddClient(ip, messageId);
                 }
 
                 break;
@@ -177,13 +173,13 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.Position:
 
-                lastMessageRead++; //Tengo qe guardar un diccionario para saber qe cliente es el ultimo mensaje
+                lastMessageRead[messageId]++; //Tengo qe guardar un diccionario para saber qe cliente es el ultimo mensaje
                 int currentMessage = NetVector3.GetLastMessage();
 
-                if (lastMessageRead < currentMessage)
+                if (lastMessageRead[messageId] < currentMessage)
                 {
-                    // Debug.Log("Se perdio el mensaje = " + lastMessageRead);
-                    lastMessageRead = currentMessage;
+                    Debug.Log("Se perdio el mensaje = " + lastMessageRead);
+                    lastMessageRead[messageId] = currentMessage;
                 }
                 else
                 {
@@ -198,19 +194,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 break;
         }
-
-        if (!isServer)
-        {
-            Debug.Log("Esta recibiendo datos un cliente");
-        }
-
-        if (Input.GetKeyDown(KeyCode.M))
-        {
-            NetVector3 net = new NetVector3(Vector3.zero);
-            net.SetClientId(1);
-            Broadcast(net.Serialize(), clients[1].ipEndPoint);
-        }
-
     }
 
     public void SendToServer(byte[] data)
@@ -236,7 +219,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private void Update()
     {
-        // Flush the data in main thread
         if (connection != null)
             connection.FlushReceiveData();
     }
@@ -255,7 +237,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         // Deserialize the payload into a NetVector3
         NetVector3 netPosition = new NetVector3(data);
 
-
         // Set the cube's position to the position received from the client
         cube.transform.position = netPosition.GetData();
 
@@ -265,7 +246,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private void BroadcastCubePosition(int senderClientId, byte[] data)
     {
-        // Iterate through all clients and send the position update to each client
         using (var iterator = clients.GetEnumerator())
         {
             while (iterator.MoveNext())
@@ -280,8 +260,4 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             }
         }
     }
-
-
-
-
 }
