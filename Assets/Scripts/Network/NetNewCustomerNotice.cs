@@ -4,16 +4,16 @@ using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
 
-public class NetNewCoustomerNotice : IMessage<(long, int)>
+public class NetNewCustomerNotice : IMessage<(long, int)>
 {
     int clientId;
     (long, int) data;
 
-    public NetNewCoustomerNotice((long, int) data)
+    public NetNewCustomerNotice((long, int) data)
     {
         this.data = data;
     }
-    public NetNewCoustomerNotice(byte[] data)
+    public NetNewCustomerNotice(byte[] data)
     {
         this.data = Deserialize(data);
     }

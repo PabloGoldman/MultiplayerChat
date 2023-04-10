@@ -40,7 +40,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private UdpConnection connection;
 
-
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
@@ -48,7 +47,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public GameObject cubePrefab;
     private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
 
-    public int serverClientId = 0; // This id should be generated during first handshake
+    public int serverClientId = 0; // Se genera en elñ primer handshake
     public int actualClientId = 0;
     static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
@@ -89,9 +88,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             {
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
+                    NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
                     netNewCoustomer.SetClientId(i);
-                    Broadcast(netNewCoustomer.Serialize()); //Tengo qe mandar la posicion en la qe esta el cubito tmb.  
+                    Broadcast(netNewCoustomer.Serialize()); 
                 }
             }
         }
@@ -135,10 +134,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                     Broadcast(netSetClientID.Serialize(), ip);
 
                     AddClient(ip, serverClientId);
-                    //AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2), serverClientId);
 
-
-                    NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice(handShake.getData());
+                    NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice(handShake.getData());
                     netNewCoustomer.SetClientId(serverClientId);
                     BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
                     serverClientId++;
@@ -157,9 +154,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (!clients.ContainsKey(messageId))
                 {
-                    NetNewCoustomerNotice NewCoustomer = new NetNewCoustomerNotice(data);
+                    NetNewCustomerNotice NewCoustomer = new NetNewCustomerNotice(data);
                     AddClient(ip, messageId);
-                    //AddClient(new IPEndPoint(NewCoustomer.getData().Item1, NewCoustomer.getData().Item2), messageId);
                 }
 
                 break;
@@ -187,7 +183,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 }
                 else
                 {
-                        UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
+                    UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
                 }
 
                 break;
@@ -235,16 +231,17 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             return;
         }
 
-        // Get the cube GameObject for the client
+        // Toma el cubo del cliente
         GameObject cube = cubes[clientId];
 
-        // Deserialize the payload into a NetVector3
+        // Deserealiza la data en un NetVector3
         NetVector3 netPosition = new NetVector3(data);
 
-        // Set the cube's position to the position received from the client
+        // Setea la posicion del cubo a la posicion que recibio del cliente
         cube.transform.position = netPosition.GetData();
 
-        // Broadcast the cube's position to all other clients
+        // Broadcastea la posicion del cubo al resto de los clientes
+
         BroadcastCubePosition(clientId, data);
     }
 
@@ -256,9 +253,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             {
                 int receiverClientId = iterator.Current.Key;
 
-                // No te automandes tu propio movimiento
+                // Evita que te mandes tuu propia posicion
                 if (receiverClientId != senderClientId)
                 {
+                    //Chequea ambos IpEndPoint, y si el enviador es el mismo que el receptor, continua el loop sin hacer el Broadcast
                     if (clients[receiverClientId].ipEndPoint.Equals(clients[senderClientId].ipEndPoint)) continue;
                     Broadcast(data, clients[receiverClientId].ipEndPoint);
 
