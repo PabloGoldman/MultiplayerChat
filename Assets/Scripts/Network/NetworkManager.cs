@@ -150,7 +150,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 break;
 
-            case MessageType.NewCoustomerNotice:
+            case MessageType.NewCustomerNotice:
 
                 if (!clients.ContainsKey(messageId))
                 {

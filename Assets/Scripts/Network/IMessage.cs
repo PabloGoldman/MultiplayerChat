@@ -4,7 +4,7 @@ using UnityEngine;
 
 public enum MessageType
 {
-    NewCoustomerNotice = -3,
+    NewCustomerNotice = -3,
     SetClientID = -2,
     HandShake = -1,
     Console = 0,
