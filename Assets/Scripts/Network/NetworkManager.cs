@@ -40,8 +40,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private UdpConnection connection;
 
-    bool alreadyAddedClient;
-    public int actualClientId = 0;
 
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
@@ -50,7 +48,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public GameObject cubePrefab;
     private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
 
-    public int clientId; // This id should be generated during first handshake
+    public int serverClientId = 0; // This id should be generated during first handshake
+    public int actualClientId = 0;
     static int lastMessageRead = 0;
 
     public void StartServer(int port)
@@ -70,30 +69,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         connection = new UdpConnection(ip, port, this);
 
         NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
-        handShakeMesage.SetClientId(clientId);
+        handShakeMesage.SetClientId(0);
         SendToServer(handShakeMesage.Serialize());
-
-        if (!alreadyAddedClient)
-        {
-            actualClientId = clientId;
-            alreadyAddedClient = true;
-        }
-
-        AddClient(new IPEndPoint(ip, port));
-        // Broadcast(data, new IPEndPoint(ip, port));
-
     }
 
-    public void AddClient(IPEndPoint ip)
+    public void AddClient(IPEndPoint ip, int newClientID)
     {
         if (!ipToId.ContainsKey(ip))
         {
             Debug.Log("Adding client: " + ip.Address);
 
-            clients.Add(clientId, new Client(ip, clientId, Time.realtimeSinceStartup));
+            clients.Add(newClientID, new Client(ip, newClientID, Time.realtimeSinceStartup));
 
             // Se genera un cubo para el cliente que se acaba de conectar
-            GenerateCubeForClient(clientId);
+            GenerateCubeForClient(newClientID);
 
             // Send a greeting message to other clients
             using (var iterator = clients.GetEnumerator())
@@ -101,18 +90,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 while (iterator.MoveNext())
                 {
                     int receiverClientId = iterator.Current.Key;
-                    if (receiverClientId != cubes[actualClientId].GetComponent<Cube>().clientId)
+                    if (receiverClientId != newClientID)
                     {
-                        NetHandShake handShakeMesage = new NetHandShake((ip.Address.Address,ip.Port));
-                        handShakeMesage.SetClientId(cubes[actualClientId].GetComponent<Cube>().clientId);
+                        NetHandShake handShakeMesage = new NetHandShake((ip.Address.Address, ip.Port));
+                        handShakeMesage.SetClientId(newClientID);
                         Broadcast(handShakeMesage.Serialize(), iterator.Current.Value.ipEndPoint);
                     }
                 }
             }
-
-
-
-            clientId++;
         }
     }
 
@@ -138,24 +123,27 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
-        //if (OnReceiveEvent != null)
-        //    OnReceiveEvent.Invoke(data, ip);
 
-        int clientId = MessageChecker.Instance.CheckClientId(data);
+        int messageId = MessageChecker.Instance.CheckClientId(data);
 
         switch (MessageChecker.Instance.CheckMessageType(data))
         {
             case MessageType.HandShake:
 
                 NetHandShake handShake = new NetHandShake(data);
-                handShake.SetClientId(clientId);
+                handShake.SetClientId(serverClientId);
 
-                if (!clients.ContainsKey(clientId))
+                if (!clients.ContainsKey(serverClientId))
                 {
-                    // AddClient(new IPEndPoint(handShake.getData().Item1, handShake.getData().Item2));
-                    AddClient(ip);
+                    NetSetClientID netSetClientID = new NetSetClientID(serverClientId);
+                    Broadcast(netSetClientID.Serialize(), ip);
 
-                    BroadcastCubePosition(clientId, handShake.Serialize());
+                    AddClient(ip, serverClientId);
+
+                    NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice(handShake.getData());
+                    netNewCoustomer.SetClientId(serverClientId);
+                    BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
+                    serverClientId++;
                 }
                 else
                 {
@@ -166,6 +154,27 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             case MessageType.Console:
 
                 break;
+
+            case MessageType.NewCoustomerNotice:
+
+                if (!clients.ContainsKey(messageId))
+                {
+                    NetNewCoustomerNotice NewCoustomer = new NetNewCoustomerNotice(data);
+                    AddClient(new IPEndPoint(NewCoustomer.getData().Item1, NewCoustomer.getData().Item2), messageId);
+                }
+
+                break;
+
+            case MessageType.SetClientID:
+
+                NetSetClientID netGetClientID = new NetSetClientID(data);
+
+                actualClientId = netGetClientID.GetData();
+
+                AddClient(ip, actualClientId);
+
+                break;
+
             case MessageType.Position:
 
                 lastMessageRead++; //Tengo qe guardar un diccionario para saber qe cliente es el ultimo mensaje
@@ -178,7 +187,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 }
                 else
                 {
-                    UpdateCubePosition(cubes[clientId].GetComponent<Cube>().clientId, data);
+                    UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
                 }
 
                 break;

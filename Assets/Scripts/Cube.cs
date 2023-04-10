@@ -16,7 +16,7 @@ public class Cube : MonoBehaviour
     {
         if (!NetworkManager.Instance.isServer)
         {
-            if (NetworkManager.Instance.actualClientId == clientId)
+           if (NetworkManager.Instance.actualClientId == clientId)
             {
                 if (Input.GetKey(KeyCode.D))
                 {
