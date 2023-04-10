@@ -85,11 +85,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             // Se genera un cubo para el cliente que se acaba de conectar
             GenerateCubeForClient(newClientID);
 
-            for (int i = 0; i < clients.Count; i++)
+            if (isServer)
             {
-                NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
-                netNewCoustomer.SetClientId(i);
-                Broadcast(netNewCoustomer.Serialize());
+                for (int i = 0; i < clients.Count; i++)
+                {
+                    NetNewCoustomerNotice netNewCoustomer = new NetNewCoustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
+                    netNewCoustomer.SetClientId(i);
+                    Broadcast(netNewCoustomer.Serialize()); //Tengo qe mandar la posicion en la qe esta el cubito tmb.
+                }
             }
         }
     }
@@ -155,8 +158,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 if (!clients.ContainsKey(messageId))
                 {
                     NetNewCoustomerNotice NewCoustomer = new NetNewCoustomerNotice(data);
-                    //AddClient(new IPEndPoint(NewCoustomer.getData().Item1, NewCoustomer.getData().Item2), messageId);
                     AddClient(ip, messageId);
+                    //AddClient(new IPEndPoint(NewCoustomer.getData().Item1, NewCoustomer.getData().Item2), messageId);
                 }
 
                 break;
@@ -173,7 +176,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.Position:
 
-                lastMessageRead[messageId]++; //Tengo qe guardar un diccionario para saber qe cliente es el ultimo mensaje
+
+                lastMessageRead[messageId]++;
                 int currentMessage = NetVector3.GetLastMessage();
 
                 if (lastMessageRead[messageId] < currentMessage)
@@ -183,7 +187,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 }
                 else
                 {
-                    UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
+                        UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
                 }
 
                 break;

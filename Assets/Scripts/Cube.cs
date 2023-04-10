@@ -8,7 +8,6 @@ public class Cube : MonoBehaviour
 
     private void Start()
     {
-        NetworkManager.Instance.OnReceiveEvent += OnReceiveDataEvent;
 
     }
 
@@ -54,25 +53,6 @@ public class Cube : MonoBehaviour
 
             NetworkManager.Instance.SendToServer(netVector3.Serialize());
             NetVector3.SetLastMessage(NetVector3.GetLastMessage() + 1);
-        }
-    }
-
-    private void OnReceiveDataEvent(byte[] data, IPEndPoint ep)
-    {
-        switch (MessageChecker.Instance.CheckMessageType(data))
-        {
-            case MessageType.HandShake:
-
-                Debug.Log("HandShake");
-                break;
-            case MessageType.Console:
-
-                Debug.Log("Console");
-                break;
-            case MessageType.Position:
-
-                Debug.Log("Position");
-                break;
         }
     }
 }
