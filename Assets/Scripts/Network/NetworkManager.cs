@@ -90,7 +90,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
                     netNewCoustomer.SetClientId(i);
-                    Broadcast(netNewCoustomer.Serialize()); 
+                    Broadcast(netNewCoustomer.Serialize());
                 }
             }
         }
@@ -145,12 +145,18 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     Debug.Log("Es el mismo cliente");
                 }
-
                 break;
             case MessageType.Console:
 
-                break;
+                NetMessage netMessage = new NetMessage(data);
 
+                netMessage.SetClientId(messageId);
+
+                Debug.Log(messageId);
+
+                Broadcast(netMessage.Serialize(), ip);
+
+                break;
             case MessageType.NewCustomerNotice:
 
                 if (!clients.ContainsKey(messageId))
@@ -172,7 +178,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 break;
 
             case MessageType.Position:
-
 
                 lastMessageRead[messageId]++;
                 int currentMessage = NetVector3.GetLastMessage();

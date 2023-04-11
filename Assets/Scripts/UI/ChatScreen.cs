@@ -12,7 +12,7 @@ public class ChatScreen : MonoBehaviourSingleton<ChatScreen>
 
         this.gameObject.SetActive(false);
 
-        //NetworkManager.Instance.OnReceiveEvent += OnReceiveDataEvent;
+        NetworkManager.Instance.OnReceiveEvent += OnReceiveDataEvent;
     }
 
     private void OnReceiveDataEvent(byte[] data, IPEndPoint ep)
@@ -36,7 +36,13 @@ public class ChatScreen : MonoBehaviourSingleton<ChatScreen>
             }
             else
             {
-                NetworkManager.Instance.SendToServer(System.Text.ASCIIEncoding.UTF8.GetBytes(inputMessage.text));
+                //Aca tal vez haya que pasarle el id
+
+                NetMessage netMessage = new NetMessage(str.ToCharArray());
+
+                NetworkManager.Instance.SendToServer(netMessage.Serialize());
+
+                //NetworkManager.Instance.SendToServer(System.Text.ASCIIEncoding.UTF8.GetBytes(inputMessage.text));
             }
 
             inputMessage.ActivateInputField();
