@@ -118,7 +118,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
-
         int messageId = MessageChecker.Instance.CheckClientId(data);
 
         switch (MessageChecker.Instance.CheckMessageType(data))
@@ -128,8 +127,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 NetHandShake handShake = new NetHandShake(data);
                 handShake.SetClientId(serverClientId);
 
+                //Chequea que no sea un cliente que ya exista
                 if (!clients.ContainsKey(serverClientId))
                 {
+                    //Le asigna un ID al cliente y despues lo broadcastea
                     NetSetClientID netSetClientID = new NetSetClientID(serverClientId);
                     Broadcast(netSetClientID.Serialize(), ip);
 
