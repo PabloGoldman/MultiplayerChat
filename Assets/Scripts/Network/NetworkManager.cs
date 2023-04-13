@@ -51,6 +51,13 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public int actualClientId = 0;
     static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
+    void Awake()
+    {
+#if UNITY_SERVER
+    StartServer(61301);
+#endif
+    }
+
     public void StartServer(int port)
     {
         isServer = true;
