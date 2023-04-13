@@ -29,12 +29,15 @@ public class NetMessage
 
     public char[] Deserialize(byte[] message)
     {
-        char[] outData = new char[message.Length / sizeof(char)/* - sizeof(int) * 2*/]; //Ojo aca puede estar mal el tamaño!!
+        char[] outData = new char[(message.Length - 2 * sizeof(int)) / sizeof(char)];
 
-        for (int i = 0; i < outData.Length; i++)
+
+        for (int i = 0 ; i < outData.Length; i++)
         {
-            outData[i] = BitConverter.ToChar(message, (i * sizeof(char))/* + sizeof(int) * 2*/);  //El size of int lo hago para que no tome los primeros 8 bytes que dan el tipo de mensaje y id
+            outData[i] = BitConverter.ToChar(message, (2 * sizeof(int) + i * sizeof(char))); 
+            UnityEngine.Debug.Log(outData[i]);
         }
+
 
         return outData;
     }

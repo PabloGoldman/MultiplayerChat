@@ -155,10 +155,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                     Broadcast(data);
                 }
 
-                string text = "";
 
+                string text = "";
                 char[] aux = netMessage.GetData();
-                for (int i = 4; i < netMessage.GetData().Length; i++)
+                
+                for (int i = 0; i < netMessage.GetData().Length; i++)
                 {
                     text += aux[i];
                 }
