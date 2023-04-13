@@ -29,20 +29,20 @@ public class ChatScreen : MonoBehaviourSingleton<ChatScreen>
     {
         if (inputMessage.text != "")
         {
+
             if (NetworkManager.Instance.isServer)
             {
-                NetworkManager.Instance.Broadcast(System.Text.ASCIIEncoding.UTF8.GetBytes(inputMessage.text));
-                messages.text += inputMessage.text + System.Environment.NewLine;
+                NetMessage netMessage = new NetMessage(str.ToCharArray());
+
+                NetworkManager.Instance.Broadcast(netMessage.Serialize());
+                messages.text += str + System.Environment.NewLine;
             }
             else
             {
-                //Aca tal vez haya que pasarle el id
-
                 NetMessage netMessage = new NetMessage(str.ToCharArray());
+                netMessage.SetClientId(NetworkManager.Instance.actualClientId);
 
                 NetworkManager.Instance.SendToServer(netMessage.Serialize());
-
-                //NetworkManager.Instance.SendToServer(System.Text.ASCIIEncoding.UTF8.GetBytes(inputMessage.text));
             }
 
             inputMessage.ActivateInputField();

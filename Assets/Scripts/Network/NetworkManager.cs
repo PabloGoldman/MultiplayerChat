@@ -150,11 +150,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 NetMessage netMessage = new NetMessage(data);
 
-                netMessage.SetClientId(messageId);
+                if (isServer)
+                {
+                    Broadcast(data);
+                }
 
-                Debug.Log(messageId);
+                string text = "";
 
-                Broadcast(netMessage.Serialize(), ip);
+                char[] aux = netMessage.GetData();
+                for (int i = 4; i < netMessage.GetData().Length; i++)
+                {
+                    text += aux[i];
+                }
+
+                ChatScreen.Instance.messages.text += text + System.Environment.NewLine;
 
                 break;
             case MessageType.NewCustomerNotice:
