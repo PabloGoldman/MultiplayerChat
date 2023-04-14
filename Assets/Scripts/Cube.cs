@@ -6,18 +6,6 @@ public class Cube : MonoBehaviour
     public int clientId;
     public float speed = 5f;
 
-    Rigidbody rb;
-
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody>();
-    }
-
-    private void Start()
-    {
-
-    }
-
     void Update()
     {
         if (!NetworkManager.Instance.isServer)
@@ -26,15 +14,35 @@ public class Cube : MonoBehaviour
             {
                 if (Input.GetKey(KeyCode.D))
                 {
-                    MoveCube(speed);
+                    MoveCube(Vector3.right, speed);
                 }
 
                 if (Input.GetKey(KeyCode.A))
                 {
-                    MoveCube(-speed);
+                    MoveCube(Vector3.left , speed);
                 }
 
-                // Send the position of the cube to the server
+                if (Input.GetKey(KeyCode.W))
+                {
+                    MoveCube(Vector3.up, speed);
+                }
+
+                if (Input.GetKey(KeyCode.S))
+                {
+                    MoveCube(Vector3.down, speed);
+                }
+
+                if (Input.GetKey(KeyCode.Q))
+                {
+                    MoveCube(Vector3.forward, speed);
+                }
+
+                if (Input.GetKey(KeyCode.E))
+                {
+                    MoveCube(Vector3.back, speed);
+                }
+
+                // Manda la posicion al server
                 SendPosition();
             }
         }
@@ -45,10 +53,9 @@ public class Cube : MonoBehaviour
         clientId = id;
     }
 
-    void MoveCube(float speed)
+    void MoveCube(Vector3 direction, float speed)
     {
-        //rb.AddForce(Vector3.right * speed);
-        transform.position += Vector3.right * speed * Time.deltaTime;
+        transform.Translate(direction * speed * Time.deltaTime);
     }
 
     void SendPosition()
