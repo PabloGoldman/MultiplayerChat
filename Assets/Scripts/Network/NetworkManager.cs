@@ -111,15 +111,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         cubes.Add(clientId, cube);
     }
 
-    private void RemoveClient(IPEndPoint ip)
+    private void RemoveClient(int idToRemove)
     {
-        if (ipToId.ContainsKey(ip))
+        if (clients.ContainsKey(idToRemove))
         {
-            Debug.Log("Removing client: " + ip.Address);
-            clients.Remove(ipToId[ip]);
+            Debug.Log("Removing client: " + idToRemove);
+
+            Destroy(cubes[idToRemove]);
+
+            clients.Remove(idToRemove);
+            cubes.Remove(idToRemove);
+
 
             // Se destruye el cubo del cliente que se desconectó
-            Destroy(GameObject.Find("Cube_" + ipToId[ip]));
+            //Destroy(GameObject.Find("Cube_" + idToRemove));
         }
     }
 
@@ -165,7 +170,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 string text = "";
                 char[] aux = netMessage.GetData();
-                
+
                 for (int i = 0; i < netMessage.GetData().Length; i++)
                 {
                     text += aux[i];
@@ -208,6 +213,21 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
                 }
+
+                break;
+
+            case MessageType.Disconnection:
+
+                if (isServer)
+                {
+                    RemoveClient(messageId);
+                    Broadcast(data);
+                }
+                else
+                {
+                    RemoveClient(messageId);
+                }
+
 
                 break;
 
@@ -285,6 +305,19 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 }
             }
+        }
+    }
+
+    void OnApplicationQuit()
+    {
+        Debug.Log("lLEGA");
+
+        if (!isServer)
+        {
+            NetDisconnection netDisconnection = new NetDisconnection();
+            netDisconnection.SetClientId(actualClientId);
+
+            SendToServer(netDisconnection.Serialize());
         }
     }
 }

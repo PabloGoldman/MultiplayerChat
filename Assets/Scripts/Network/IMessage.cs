@@ -4,11 +4,12 @@ using UnityEngine;
 
 public enum MessageType
 {
-    NewCustomerNotice = -3,
     SetClientID = -2,
     HandShake = -1,
     Console = 0,
-    Position = 1
+    Position = 1,
+    NewCustomerNotice = 2,
+    Disconnection = 3
 };
 
 public interface IMessage <T>
