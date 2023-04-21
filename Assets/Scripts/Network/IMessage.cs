@@ -4,6 +4,7 @@ using UnityEngine;
 
 public enum MessageType
 {
+    CheckActivity = -3,
     SetClientID = -2,
     HandShake = -1,
     Console = 0,

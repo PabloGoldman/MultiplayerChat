@@ -51,11 +51,15 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public int actualClientId = 0;
     static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
+    int timeUntilDisconnection = 5;
+    int lastMessageReceivedFromServer = 0;
+    private Dictionary<int, int> lastMessageReceivedFromClients = new Dictionary<int, int>();
     void Awake()
     {
 #if UNITY_SERVER
     StartServer(61301);
 #endif
+
     }
 
     public void StartServer(int port)
@@ -63,6 +67,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         isServer = true;
         this.port = port;
         connection = new UdpConnection(port, this);
+
+        InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
     }
 
     public void StartClient(IPAddress ip, int port)
@@ -77,27 +83,37 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         NetHandShake handShakeMesage = new NetHandShake((ip.Address, port));
         handShakeMesage.SetClientId(0);
         SendToServer(handShakeMesage.Serialize());
+
+        InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
     }
 
     public void AddClient(IPEndPoint ip, int newClientID)
     {
-        if (!ipToId.ContainsKey(ip))
+        if (!clients.ContainsKey(newClientID))
         {
             Debug.Log("Adding client: " + ip.Address);
 
             clients.Add(newClientID, new Client(ip, newClientID, Time.realtimeSinceStartup));
             lastMessageRead.Add(newClientID, 0);
+            lastMessageReceivedFromClients.Add(newClientID, 0);
 
             // Se genera un cubo para el cliente que se acaba de conectar
             GenerateCubeForClient(newClientID);
 
             if (isServer)
             {
-                for (int i = 0; i < clients.Count; i++)
+
+                using (var iterator = clients.GetEnumerator())
                 {
-                    NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice((clients[i].ipEndPoint.Address.Address, clients[i].ipEndPoint.Port));
-                    netNewCoustomer.SetClientId(i);
-                    Broadcast(netNewCoustomer.Serialize());
+                    while (iterator.MoveNext())
+                    {
+                        int receiverClientId = iterator.Current.Key;
+                    
+                        NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice((clients[receiverClientId].ipEndPoint.Address.Address, clients[receiverClientId].ipEndPoint.Port));
+                        netNewCoustomer.SetClientId(receiverClientId);
+                        Broadcast(netNewCoustomer.Serialize());
+                    
+                    }
                 }
             }
         }
@@ -115,16 +131,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         if (clients.ContainsKey(idToRemove))
         {
-            Debug.Log("Removing client: " + idToRemove);
-
             Destroy(cubes[idToRemove]);
 
             clients.Remove(idToRemove);
             cubes.Remove(idToRemove);
-
-
-            // Se destruye el cubo del cliente que se desconectó
-            //Destroy(GameObject.Find("Cube_" + idToRemove));
+            lastMessageRead.Remove(idToRemove);
+            lastMessageReceivedFromClients.Remove(idToRemove);
         }
     }
 
@@ -134,6 +146,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         switch (MessageChecker.Instance.CheckMessageType(data))
         {
+
             case MessageType.HandShake:
 
                 NetHandShake handShake = new NetHandShake(data);
@@ -157,7 +170,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     Debug.Log("Es el mismo cliente");
                 }
+
                 break;
+
             case MessageType.Console:
 
                 NetMessage netMessage = new NetMessage(data);
@@ -166,7 +181,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     Broadcast(data);
                 }
-
 
                 string text = "";
                 char[] aux = netMessage.GetData();
@@ -179,6 +193,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 ChatScreen.Instance.messages.text += text + System.Environment.NewLine;
 
                 break;
+
             case MessageType.NewCustomerNotice:
 
                 if (!clients.ContainsKey(messageId))
@@ -195,6 +210,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 actualClientId = netGetClientID.GetData();
 
+                //clients[actualClientId].id = actualClientId; 
+
                 AddClient(ip, actualClientId);
 
                 break;
@@ -206,7 +223,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (lastMessageRead[messageId] < currentMessage)
                 {
-                    Debug.Log("Se perdio el mensaje = " + lastMessageRead);
+                    //Debug.Log("Se perdio el mensaje = " + lastMessageRead);
                     lastMessageRead[messageId] = currentMessage;
                 }
                 else
@@ -220,12 +237,25 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (isServer)
                 {
-                    RemoveClient(messageId);
                     Broadcast(data);
+                    RemoveClient(messageId);
                 }
                 else
                 {
                     RemoveClient(messageId);
+                }
+
+                break;
+
+            case MessageType.CheckActivity:
+
+                if (isServer)
+                {
+                    lastMessageReceivedFromClients[messageId] = 0;
+                }
+                else
+                {
+                    lastMessageReceivedFromServer = 0;
                 }
 
 
@@ -264,6 +294,67 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         if (connection != null)
             connection.FlushReceiveData();
+    }
+
+    void SendCheckMessageActivity()
+    {
+        if (isServer)
+        {
+            NetCheckActivity netCheckActivity = new NetCheckActivity();
+            netCheckActivity.SetClientId(-1);
+
+            Broadcast(netCheckActivity.Serialize());
+        }
+        else
+        {
+            NetCheckActivity netCheckActivity = new NetCheckActivity();
+            netCheckActivity.SetClientId(actualClientId);
+
+            SendToServer(netCheckActivity.Serialize());
+        }
+
+        using (var iterator = clients.GetEnumerator())
+        {
+            while (iterator.MoveNext())
+            {
+                int receiverClientId = iterator.Current.Key;
+
+                lastMessageReceivedFromClients[receiverClientId]++;
+            }
+        }
+
+        lastMessageReceivedFromServer++;
+
+        if (isServer)
+        {
+            using (var iterator = clients.GetEnumerator())
+            {
+                while (iterator.MoveNext())
+                {
+                    int receiverClientId = iterator.Current.Key;
+
+                    if (lastMessageReceivedFromClients[receiverClientId] >= timeUntilDisconnection)
+                    {
+                        RemoveClient(receiverClientId);
+
+                        NetDisconnection netDisconnection = new NetDisconnection();
+                        netDisconnection.SetClientId(receiverClientId);
+
+                        Broadcast(netDisconnection.Serialize());
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (lastMessageReceivedFromServer >= timeUntilDisconnection)
+            {
+                NetDisconnection netDisconnection = new NetDisconnection();
+                netDisconnection.SetClientId(actualClientId);
+
+                SendToServer(netDisconnection.Serialize());
+            }
+        }
     }
 
     private void UpdateCubePosition(int clientId, byte[] data)
@@ -310,8 +401,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     void OnApplicationQuit()
     {
-        Debug.Log("lLEGA");
-
         if (!isServer)
         {
             NetDisconnection netDisconnection = new NetDisconnection();
