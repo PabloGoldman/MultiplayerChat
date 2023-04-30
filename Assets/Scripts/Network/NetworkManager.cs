@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
@@ -173,14 +174,36 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         if (clients.Count == maximumNumberOfUsers)
         {
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-
-            startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
-            port++;
-            startInfo.Arguments = port.ToString();
-
-            Process.Start(startInfo);
+            CreateNewServer();
         }
+    }
+
+    //void CreateNewServer()
+    //{
+    //    ProcessStartInfo startInfo = new ProcessStartInfo();
+
+    //    startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
+    //    port++;
+    //    startInfo.Arguments = port.ToString();
+
+    //    Process.Start(startInfo);
+    //}
+
+    IEnumerator CreateNewServer(IPEndPoint ip)
+    {
+        ProcessStartInfo startInfo = new ProcessStartInfo();
+
+        startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
+        port++;
+        startInfo.Arguments = port.ToString();
+
+        Process.Start(startInfo);
+
+        //Aca habria un loading screen o algo asi
+        yield return new WaitForSeconds(8.0f);
+
+        NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(port);
+        Broadcast(thereIsNoPlace.Serialize(), ip);
     }
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
@@ -194,8 +217,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (clients.Count >= maximumNumberOfUsers)
                 {
-                    NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(port);
-                    Broadcast(thereIsNoPlace.Serialize(), ip);
+                    StartCoroutine(CreateNewServer(ip));
+
+                    //NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(port);
+                    //Broadcast(thereIsNoPlace.Serialize(), ip);
                 }
                 else
                 {
@@ -216,7 +241,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                         BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
                         serverClientId++;
 
-                        CheckServerIsFull();
+                        //CheckServerIsFull();
                     }
                     else
                     {
