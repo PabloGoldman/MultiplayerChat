@@ -53,7 +53,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public int actualClientId = 0;
     static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
-    int timeUntilDisconnection = 15;
+    int timeUntilDisconnection = 30;
     int lastMessageReceivedFromServer = 0;
     private Dictionary<int, int> lastMessageReceivedFromClients = new Dictionary<int, int>();
 
@@ -62,7 +62,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     void Awake()
     {
 #if UNITY_SERVER
-        port = 62500;
+        port = 55000;
 
         try
         {
@@ -183,7 +183,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         port++;
         startInfo.Arguments = port.ToString();
 
+
         Process.Start(startInfo);
+
+
 
         //Aca habria un loading screen o algo asi
         yield return new WaitForSeconds(8.0f);
@@ -301,12 +304,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (isServer)
                 {
-                     Broadcast(data);
-                     RemoveClient(messageId);
+                    Broadcast(data);
+                    RemoveClient(messageId);
                 }
                 else
                 {
-                      RemoveClient(messageId);
+                    RemoveClient(messageId);
                 }
 
                 break;
@@ -316,10 +319,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 if (isServer)
                 {
                     lastMessageReceivedFromClients[messageId] = 0;
+                    UnityEngine.Debug.Log("El servidor recibe mensaje del cliente: " + messageId);
                 }
                 else
                 {
                     lastMessageReceivedFromServer = 0;
+                    UnityEngine.Debug.Log("El cliente recibe mensaje del servidor");
                 }
 
 
@@ -383,6 +388,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             NetCheckActivity netCheckActivity = new NetCheckActivity();
             netCheckActivity.SetClientId(actualClientId);
 
+
             SendToServer(netCheckActivity.Serialize());
         }
 
@@ -420,8 +426,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                         NetDisconnection netDisconnection = new NetDisconnection();
                         netDisconnection.SetClientId(receiverClientId);
 
-                        UnityEngine.Debug.Log("Lo tiro el server");
-
                         Broadcast(netDisconnection.Serialize());
                     }
                 }
@@ -434,7 +438,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 NetDisconnection netDisconnection = new NetDisconnection();
                 netDisconnection.SetClientId(actualClientId);
 
-                SendToServer(netDisconnection.Serialize()); 
+                SendToServer(netDisconnection.Serialize());
             }
         }
     }
