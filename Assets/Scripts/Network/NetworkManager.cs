@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using UnityEngine;
 
@@ -47,18 +48,45 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public GameObject cubePrefab;
     private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
 
-    public int serverClientId = 0; // Se genera en elñ primer handshake
+    public int serverClientId = 0; // Se genera en el primer handshake
     public int actualClientId = 0;
     static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
-    int timeUntilDisconnection = 5;
+    int timeUntilDisconnection = 15;
     int lastMessageReceivedFromServer = 0;
     private Dictionary<int, int> lastMessageReceivedFromClients = new Dictionary<int, int>();
+
+    int maximumNumberOfUsers = 2;
+
     void Awake()
     {
 #if UNITY_SERVER
-    StartServer(61301);
+        port = 62500;
+
+        try
+        {
+            int portNumber;
+            int.TryParse(System.Environment.GetCommandLineArgs()[1], out portNumber);
+
+            if (portNumber != port)
+            {
+                port = portNumber;
+            }
+        }
+        catch (Exception)
+        {
+
+            Console.WriteLine("Falla");
+
+        }
+
+        Console.WriteLine("--------------------------------------------");
+        Console.WriteLine("\n" + "\n" + "\n" + port + "\n" + "\n" + "\n");
+        Console.WriteLine("--------------------------------------------");
+
+        StartServer(port);
 #endif
+
 
     }
 
@@ -84,6 +112,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         handShakeMesage.SetClientId(0);
         SendToServer(handShakeMesage.Serialize());
 
+
         InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
     }
 
@@ -91,7 +120,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         if (!clients.ContainsKey(newClientID))
         {
-            Debug.Log("Adding client: " + ip.Address);
+            UnityEngine.Debug.Log("Adding client: " + ip.Address);
 
             clients.Add(newClientID, new Client(ip, newClientID, Time.realtimeSinceStartup));
             lastMessageRead.Add(newClientID, 0);
@@ -108,11 +137,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                     while (iterator.MoveNext())
                     {
                         int receiverClientId = iterator.Current.Key;
-                    
+
                         NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice((clients[receiverClientId].ipEndPoint.Address.Address, clients[receiverClientId].ipEndPoint.Port));
                         netNewCoustomer.SetClientId(receiverClientId);
                         Broadcast(netNewCoustomer.Serialize());
-                    
+
                     }
                 }
             }
@@ -140,6 +169,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
     }
 
+    void CheckServerIsFull()
+    {
+        if (clients.Count == maximumNumberOfUsers)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+
+            startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
+            port++;
+            startInfo.Arguments = port.ToString();
+
+            Process.Start(startInfo);
+        }
+    }
+
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
         int messageId = MessageChecker.Instance.CheckClientId(data);
@@ -149,26 +192,36 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.HandShake:
 
-                NetHandShake handShake = new NetHandShake(data);
-                handShake.SetClientId(serverClientId);
-
-                //Chequea que no sea un cliente que ya exista
-                if (!clients.ContainsKey(serverClientId))
+                if (clients.Count >= maximumNumberOfUsers)
                 {
-                    //Le asigna un ID al cliente y despues lo broadcastea
-                    NetSetClientID netSetClientID = new NetSetClientID(serverClientId);
-                    Broadcast(netSetClientID.Serialize(), ip);
-
-                    AddClient(ip, serverClientId);
-
-                    NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice(handShake.getData());
-                    netNewCoustomer.SetClientId(serverClientId);
-                    BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
-                    serverClientId++;
+                    NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(port);
+                    Broadcast(thereIsNoPlace.Serialize(), ip);
                 }
                 else
                 {
-                    Debug.Log("Es el mismo cliente");
+                    NetHandShake handShake = new NetHandShake(data);
+                    handShake.SetClientId(serverClientId);
+
+                    //Chequea que no sea un cliente que ya exista
+                    if (!clients.ContainsKey(serverClientId))
+                    {
+                        //Le asigna un ID al cliente y despues lo broadcastea
+                        NetSetClientID netSetClientID = new NetSetClientID(serverClientId);
+                        Broadcast(netSetClientID.Serialize(), ip);
+
+                        AddClient(ip, serverClientId);
+
+                        NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice(handShake.getData());
+                        netNewCoustomer.SetClientId(serverClientId);
+                        BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
+                        serverClientId++;
+
+                        CheckServerIsFull();
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.Log("Es el mismo cliente");
+                    }
                 }
 
                 break;
@@ -237,12 +290,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (isServer)
                 {
-                    Broadcast(data);
-                    RemoveClient(messageId);
+                     Broadcast(data);
+                     RemoveClient(messageId);
                 }
                 else
                 {
-                    RemoveClient(messageId);
+                      RemoveClient(messageId);
                 }
 
                 break;
@@ -261,9 +314,18 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 break;
 
+            case MessageType.ThereIsNoPlace:
+
+                connection.Close();
+
+                NetThereIsNoPlace netThereIsNoPlace = new NetThereIsNoPlace(data);
+                StartClient(ipAddress, netThereIsNoPlace.GetData());
+
+                break;
+
             default:
 
-                Debug.Log("No llego ningun dato con \"MessaggeType\"");
+                UnityEngine.Debug.Log("No llego ningun dato con \"MessaggeType\"");
 
                 break;
         }
@@ -313,17 +375,23 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             SendToServer(netCheckActivity.Serialize());
         }
 
-        using (var iterator = clients.GetEnumerator())
+        if (isServer)
         {
-            while (iterator.MoveNext())
+            using (var iterator = clients.GetEnumerator())
             {
-                int receiverClientId = iterator.Current.Key;
+                while (iterator.MoveNext())
+                {
+                    int receiverClientId = iterator.Current.Key;
 
-                lastMessageReceivedFromClients[receiverClientId]++;
+                    lastMessageReceivedFromClients[receiverClientId]++;
+                }
             }
         }
+        else
+        {
+            lastMessageReceivedFromServer++;
+        }
 
-        lastMessageReceivedFromServer++;
 
         if (isServer)
         {
@@ -335,10 +403,13 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                     if (lastMessageReceivedFromClients[receiverClientId] >= timeUntilDisconnection)
                     {
+
                         RemoveClient(receiverClientId);
 
                         NetDisconnection netDisconnection = new NetDisconnection();
                         netDisconnection.SetClientId(receiverClientId);
+
+                        UnityEngine.Debug.Log("Lo tiro el server");
 
                         Broadcast(netDisconnection.Serialize());
                     }
@@ -352,7 +423,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 NetDisconnection netDisconnection = new NetDisconnection();
                 netDisconnection.SetClientId(actualClientId);
 
-                SendToServer(netDisconnection.Serialize());
+                SendToServer(netDisconnection.Serialize()); 
             }
         }
     }
@@ -361,7 +432,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         if (!cubes.ContainsKey(clientId))
         {
-            Debug.LogWarning("Cube for client ID " + clientId + " not found in the dictionary.");
+            UnityEngine.Debug.LogWarning("Cube for client ID " + clientId + " not found in the dictionary.");
             return;
         }
 
@@ -405,6 +476,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             NetDisconnection netDisconnection = new NetDisconnection();
             netDisconnection.SetClientId(actualClientId);
+
+            UnityEngine.Debug.Log("Lo expulso por falta de actividad");
 
             SendToServer(netDisconnection.Serialize());
         }

@@ -10,7 +10,8 @@ public enum MessageType
     Console = 0,
     Position = 1,
     NewCustomerNotice = 2,
-    Disconnection = 3
+    Disconnection = 3,
+    ThereIsNoPlace = 4
 };
 
 public interface IMessage <T>
