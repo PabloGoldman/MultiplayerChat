@@ -170,24 +170,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
     }
 
-    void CheckServerIsFull()
+    bool CheckServerIsFull()
     {
-        if (clients.Count == maximumNumberOfUsers)
-        {
-            CreateNewServer();
-        }
+        return clients.Count >= maximumNumberOfUsers ? true : false;
     }
-
-    //void CreateNewServer()
-    //{
-    //    ProcessStartInfo startInfo = new ProcessStartInfo();
-
-    //    startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
-    //    port++;
-    //    startInfo.Arguments = port.ToString();
-
-    //    Process.Start(startInfo);
-    //}
 
     IEnumerator CreateNewServer(IPEndPoint ip)
     {
@@ -215,7 +201,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.HandShake:
 
-                if (clients.Count >= maximumNumberOfUsers)
+                if (CheckServerIsFull())
                 {
                     StartCoroutine(CreateNewServer(ip));
 
