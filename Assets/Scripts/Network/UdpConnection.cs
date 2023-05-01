@@ -48,7 +48,7 @@ public class UdpConnection
         lock (handler)
         {
             while (dataReceivedQueue.Count > 0)
-            {
+            { 
                 DataReceived dataReceived = dataReceivedQueue.Dequeue();
                 if (receiver != null)
                     receiver.OnReceiveData(dataReceived.data, dataReceived.ipEndPoint);

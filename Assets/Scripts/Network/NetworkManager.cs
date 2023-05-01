@@ -59,10 +59,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     int maximumNumberOfUsers = 2;
 
+    public string appName;
+    private Process process;
+    bool nextServerIsActive = false;
+
     void Awake()
     {
 #if UNITY_SERVER
-        port = 55000;
+        port = 51000;
 
         try
         {
@@ -177,21 +181,22 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     IEnumerator CreateNewServer(IPEndPoint ip)
     {
+        int numberPort = port;
+        numberPort++;
+
         ProcessStartInfo startInfo = new ProcessStartInfo();
 
         startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
         port++;
         startInfo.Arguments = port.ToString();
 
-
-        Process.Start(startInfo);
-
-
+        Process process = Process.Start(startInfo);
+        appName = process.ProcessName;
 
         //Aca habria un loading screen o algo asi
         yield return new WaitForSeconds(8.0f);
 
-        NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(port);
+        NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(numberPort);
         Broadcast(thereIsNoPlace.Serialize(), ip);
     }
 
@@ -204,12 +209,25 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.HandShake:
 
+                UnityEngine.Debug.Log(nextServerIsActive);
+
                 if (CheckServerIsFull())
                 {
-                    StartCoroutine(CreateNewServer(ip));
+                    if (nextServerIsActive) //si existe
+                    {
+                        int numberPort = port;
+                        numberPort++;
+                        NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(numberPort);
+                        Broadcast(thereIsNoPlace.Serialize(), ip);
 
-                    //NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(port);
-                    //Broadcast(thereIsNoPlace.Serialize(), ip);
+                        UnityEngine.Debug.Log("port:" + port);
+                    }
+                    else
+                    {
+                        StartCoroutine(CreateNewServer(ip));
+                    }
+
+
                 }
                 else
                 {
@@ -319,12 +337,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 if (isServer)
                 {
                     lastMessageReceivedFromClients[messageId] = 0;
-                    UnityEngine.Debug.Log("El servidor recibe mensaje del cliente: " + messageId);
                 }
                 else
                 {
                     lastMessageReceivedFromServer = 0;
-                    UnityEngine.Debug.Log("El cliente recibe mensaje del servidor");
                 }
 
 
@@ -372,6 +388,35 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         if (connection != null)
             connection.FlushReceiveData();
+
+        try
+        {
+
+            bool appActive = false;
+            foreach (Process p in Process.GetProcesses())
+            {
+                if (p.ProcessName == appName)
+                {
+                    appActive = true;
+                    break;
+                }
+            }
+
+            if (appActive)
+            {
+                nextServerIsActive = true;
+            }
+            else
+            {
+                nextServerIsActive = false;
+            }
+
+        }
+        catch (Exception)
+        {
+
+            //   UnityEngine.Debug.Log("No esta entrando");
+        }
     }
 
     void SendCheckMessageActivity()
