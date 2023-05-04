@@ -102,7 +102,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         this.port = port;
         connection = new UdpConnection(port, this);
 
-        InvokeRepeating(nameof(AddTime), 1.0f, 1.0f);
+        InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
     }
 
     public void StartClient(IPAddress ip, int port)
@@ -121,7 +121,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         UnityEngine.Debug.Log(firtStartClient);
         if (firtStartClient)
         {
-            InvokeRepeating(nameof(AddTime), 1.0f, 1.0f);
+            InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
             firtStartClient = false;
         }
     }
@@ -222,11 +222,15 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                         numberPort++;
                         NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(numberPort);
                         Broadcast(thereIsNoPlace.Serialize(), ip);
+
+                        UnityEngine.Debug.Log("port:" + port);
                     }
                     else
                     {
                         StartCoroutine(CreateNewServer(ip));
                     }
+
+
                 }
                 else
                 {
@@ -421,15 +425,24 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     }
 
-    private void FixedUpdate()
+    void SendCheckMessageActivity()
     {
-        if (connection != null)
+        if (isServer)
         {
-            SendCheckMessageActivity();
+            NetCheckActivity netCheckActivity = new NetCheckActivity();
+            netCheckActivity.SetClientId(-1);
+
+            Broadcast(netCheckActivity.Serialize());
         }
-    }
-    void AddTime()
-    {
+        else
+        {
+            NetCheckActivity netCheckActivity = new NetCheckActivity();
+            netCheckActivity.SetClientId(actualClientId);
+
+
+            SendToServer(netCheckActivity.Serialize());
+        }
+
         if (isServer)
         {
             using (var iterator = clients.GetEnumerator())
@@ -448,37 +461,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
 
 
-        if (clients.Count == 0)
-        {
-            timer++;
-            if (timer >= timeOutServer)
-            {
-                Application.Quit();
-            }
-        }
-        else
-        {
-            timer = 0;
-        }
-    }
-
-    void SendCheckMessageActivity()
-    {
-        if (isServer)
-        {
-            NetCheckActivity netCheckActivity = new NetCheckActivity();
-            netCheckActivity.SetClientId(-1);
-
-            Broadcast(netCheckActivity.Serialize());
-        }
-        else
-        {
-            NetCheckActivity netCheckActivity = new NetCheckActivity();
-            netCheckActivity.SetClientId(actualClientId);
-
-            SendToServer(netCheckActivity.Serialize());
-        }
-
         if (isServer)
         {
             using (var iterator = clients.GetEnumerator())
@@ -489,6 +471,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                     if (lastMessageReceivedFromClients[receiverClientId] >= timeUntilDisconnection)
                     {
+
                         RemoveClient(receiverClientId);
 
                         NetDisconnection netDisconnection = new NetDisconnection();
@@ -510,6 +493,19 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             }
         }
 
+
+        if (clients.Count == 0)
+        {
+            timer++;
+            if (timer >= timeOutServer)
+            {
+                Application.Quit();
+            }
+        }
+        else
+        {
+            timer = 0;
+        }
     }
 
     private void UpdateCubePosition(int clientId, byte[] data)
