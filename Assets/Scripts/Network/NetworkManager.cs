@@ -61,9 +61,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     float timeOutServer = 30;
     float timer = 0;
 
-    public string appName;
-    private Process process;
+    private string appName;
     bool nextServerIsActive = false;
+    bool firtStartClient = true;
+
 
     void Awake()
     {
@@ -117,8 +118,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         handShakeMesage.SetClientId(0);
         SendToServer(handShakeMesage.Serialize());
 
-
-        InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
+        UnityEngine.Debug.Log(firtStartClient);
+        if (firtStartClient)
+        {
+            InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
+            firtStartClient = false;
+        }
     }
 
     public void AddClient(IPEndPoint ip, int newClientID)
