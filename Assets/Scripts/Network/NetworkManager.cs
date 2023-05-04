@@ -58,6 +58,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private Dictionary<int, int> lastMessageReceivedFromClients = new Dictionary<int, int>();
 
     int maximumNumberOfUsers = 2;
+    float timeOutServer = 30;
+    float timer = 0;
 
     public string appName;
     private Process process;
@@ -91,8 +93,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         StartServer(port);
 #endif
-
-
     }
 
     public void StartServer(int port)
@@ -187,8 +187,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         ProcessStartInfo startInfo = new ProcessStartInfo();
 
         startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
-        port++;
-        startInfo.Arguments = port.ToString();
+        startInfo.Arguments = numberPort.ToString();
 
         Process process = Process.Start(startInfo);
         appName = process.ProcessName;
@@ -209,7 +208,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.HandShake:
 
-                UnityEngine.Debug.Log(nextServerIsActive);
 
                 if (CheckServerIsFull())
                 {
@@ -391,7 +389,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         try
         {
-
             bool appActive = false;
             foreach (Process p in Process.GetProcesses())
             {
@@ -417,6 +414,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             //   UnityEngine.Debug.Log("No esta entrando");
         }
+
+        UnityEngine.Debug.Log(nextServerIsActive);
+
+
     }
 
     void SendCheckMessageActivity()
@@ -485,6 +486,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 SendToServer(netDisconnection.Serialize());
             }
+        }
+
+
+        if (clients.Count == 0)
+        {
+            timer++;
+            if (timer >= timeOutServer)
+            {
+                Application.Quit();
+            }
+        }
+        else
+        {
+            timer = 0;
         }
     }
 
