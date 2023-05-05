@@ -61,7 +61,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     float timeOutServer = 15;
     float timer = 0;
 
-    private string appName;
     bool nextServerIsActive = false;
     bool firtStartClient = true;
     Process process;
@@ -189,16 +188,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         int numberPort = port;
         numberPort++;
 
-        ProcessStartInfo startInfo = new ProcessStartInfo();
-
-        startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
-        startInfo.Arguments = numberPort.ToString();
-
-         process = Process.Start(startInfo);
-       // appName = process.ProcessName;
+        CreateServerProcess(numberPort);
 
         nextServerIsActive = true;
-
 
         //Aca habria un loading screen o algo asi
         yield return new WaitForSeconds(8.0f);
@@ -207,61 +199,39 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         Broadcast(thereIsNoPlace.Serialize(), ip);
     }
 
+    void CreateServerProcess(int numberPort)
+    {
+        ProcessStartInfo startInfo = new ProcessStartInfo();
+
+        startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
+        startInfo.Arguments = numberPort.ToString();
+
+        process = Process.Start(startInfo);
+    }
+
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
         int messageId = MessageChecker.Instance.CheckClientId(data);
 
         switch (MessageChecker.Instance.CheckMessageType(data))
         {
-
             case MessageType.HandShake:
-
-
                 if (CheckServerIsFull())
                 {
                     UnityEngine.Debug.Log(nextServerIsActive);
 
                     if (nextServerIsActive) //si existe
                     {
-                        int numberPort = port;
-                        numberPort++;
-                        NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(numberPort);
-                        Broadcast(thereIsNoPlace.Serialize(), ip);
-
-                        UnityEngine.Debug.Log("port:" + port);
+                        ConnectToNextServer(ip);
                     }
                     else
                     {
                         StartCoroutine(CreateNewServer(ip));
                     }
-
-
                 }
                 else
                 {
-                    NetHandShake handShake = new NetHandShake(data);
-                    handShake.SetClientId(serverClientId);
-
-                    //Chequea que no sea un cliente que ya exista
-                    if (!clients.ContainsKey(serverClientId))
-                    {
-                        //Le asigna un ID al cliente y despues lo broadcastea
-                        NetSetClientID netSetClientID = new NetSetClientID(serverClientId);
-                        Broadcast(netSetClientID.Serialize(), ip);
-
-                        AddClient(ip, serverClientId);
-
-                        NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice(handShake.getData());
-                        netNewCoustomer.SetClientId(serverClientId);
-                        BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
-                        serverClientId++;
-
-                        //CheckServerIsFull();
-                    }
-                    else
-                    {
-                        UnityEngine.Debug.Log("Es el mismo cliente");
-                    }
+                    ConnectToServer(data, ip);
                 }
 
                 break;
@@ -300,11 +270,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             case MessageType.SetClientID:
 
                 NetSetClientID netGetClientID = new NetSetClientID(data);
-
                 actualClientId = netGetClientID.GetData();
-
-                //clients[actualClientId].id = actualClientId; 
-
                 AddClient(ip, actualClientId);
 
                 break;
@@ -316,14 +282,12 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (lastMessageRead[messageId] < currentMessage)
                 {
-                    //Debug.Log("Se perdio el mensaje = " + lastMessageRead);
                     lastMessageRead[messageId] = currentMessage;
                 }
                 else
                 {
                     UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
                 }
-
                 break;
 
             case MessageType.Disconnection:
@@ -337,7 +301,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     RemoveClient(messageId);
                 }
-
                 break;
 
             case MessageType.CheckActivity:
@@ -350,24 +313,51 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     lastMessageReceivedFromServer = 0;
                 }
-
-
                 break;
 
             case MessageType.ThereIsNoPlace:
 
                 connection.Close();
-
                 NetThereIsNoPlace netThereIsNoPlace = new NetThereIsNoPlace(data);
                 StartClient(ipAddress, netThereIsNoPlace.GetData());
-
                 break;
 
             default:
-
                 UnityEngine.Debug.Log("No llego ningun dato con \"MessaggeType\"");
-
                 break;
+        }
+    }
+
+    private void ConnectToNextServer(IPEndPoint ip)
+    {
+        int numberPort = port;
+        numberPort++;
+        NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(numberPort);
+        Broadcast(thereIsNoPlace.Serialize(), ip);
+    }
+
+    private void ConnectToServer(byte[] data, IPEndPoint ip)
+    {
+        NetHandShake handShake = new NetHandShake(data);
+        handShake.SetClientId(serverClientId);
+
+        //Chequea que no sea un cliente que ya exista
+        if (!clients.ContainsKey(serverClientId))
+        {
+            //Le asigna un ID al cliente y despues lo broadcastea
+            NetSetClientID netSetClientID = new NetSetClientID(serverClientId);
+            Broadcast(netSetClientID.Serialize(), ip);
+
+            AddClient(ip, serverClientId);
+
+            NetNewCustomerNotice netNewCoustomer = new NetNewCustomerNotice(handShake.getData());
+            netNewCoustomer.SetClientId(serverClientId);
+            BroadcastCubePosition(serverClientId, netNewCoustomer.Serialize());
+            serverClientId++;
+        }
+        else
+        {
+            UnityEngine.Debug.Log("Es el mismo cliente");
         }
     }
 
@@ -397,7 +387,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         if (connection != null)
             connection.FlushReceiveData();
 
+        CheckNextServerActivity();
+    }
 
+    void CheckNextServerActivity()
+    {
         if (process != null && !process.HasExited)
         {
             nextServerIsActive = true;
