@@ -54,9 +54,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     static Dictionary<int, int> lastMessageRead = new Dictionary<int, int>();
 
     int timeUntilDisconnection = 30;
-    int lastMessageReceivedFromServer = 0;
     private Dictionary<int, int> lastMessageReceivedFromClients = new Dictionary<int, int>();
+    int lastMessageReceivedFromServer = 0;
 
+    private Dictionary<long, float> lastLatencyReceivedFromClients = new Dictionary<long, float>();
+    float lastLatencyReceivedFromServer = 0;
+    float currentLatency;
+   
+    
     int maximumNumberOfUsers = 2;
     float timeOutServer = 15;
     float timer = 0;
@@ -101,7 +106,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         this.port = port;
         connection = new UdpConnection(port, this);
 
-        InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
+        InvokeRepeating(nameof(AddTime), 1.0f, 1.0f);
     }
 
     public void StartClient(IPAddress ip, int port)
@@ -120,7 +125,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         UnityEngine.Debug.Log(firtStartClient);
         if (firtStartClient)
         {
-            InvokeRepeating(nameof(SendCheckMessageActivity), 1.0f, 1.0f);
+            InvokeRepeating(nameof(AddTime), 1.0f, 1.0f);
             firtStartClient = false;
         }
     }
@@ -134,6 +139,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             clients.Add(newClientID, new Client(ip, newClientID, Time.realtimeSinceStartup));
             lastMessageRead.Add(newClientID, 0);
             lastMessageReceivedFromClients.Add(newClientID, 0);
+            lastLatencyReceivedFromClients.Add(newClientID, 0);
 
             // Se genera un cubo para el cliente que se acaba de conectar
             GenerateCubeForClient(newClientID);
@@ -175,6 +181,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             cubes.Remove(idToRemove);
             lastMessageRead.Remove(idToRemove);
             lastMessageReceivedFromClients.Remove(idToRemove);
+            lastLatencyReceivedFromClients.Remove(idToRemove);
         }
     }
 
@@ -222,7 +229,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                     if (nextServerIsActive) //si existe
                     {
-                        ConnectToNextServer(ip);
+                        SendServerIsFullMessage(ip);
                     }
                     else
                     {
@@ -297,6 +304,21 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     lastMessageReceivedFromServer = 0;
                 }
+
+
+                NetCheckActivity netCheckActivity = new NetCheckActivity(data);
+
+                currentLatency = DateTime.Now.Ticks - netCheckActivity.GetData().Item1;
+
+                if (isServer)
+                {
+                    lastLatencyReceivedFromClients[messageId] = currentLatency;
+                }
+                else
+                {
+                    lastLatencyReceivedFromServer = currentLatency;
+                }
+
                 break;
 
             case MessageType.ThereIsNoPlace:
@@ -335,7 +357,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         ChatScreen.Instance.messages.text += text + System.Environment.NewLine;
     }
 
-    private void ConnectToNextServer(IPEndPoint ip)
+    private void SendServerIsFullMessage(IPEndPoint ip)
     {
         int numberPort = port;
         numberPort++;
@@ -404,6 +426,15 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         CheckNextServerActivity();
     }
 
+    private void FixedUpdate()
+    {
+        if (connection == null)
+            return;
+
+
+        SendCheckMessageActivity();
+    }
+
     void CheckNextServerActivity()
     {
         if (process != null && !process.HasExited)
@@ -416,24 +447,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
     }
 
-    void SendCheckMessageActivity()
+    void AddTime()
     {
-        if (isServer)
-        {
-            NetCheckActivity netCheckActivity = new NetCheckActivity();
-            netCheckActivity.SetClientId(-1);
-
-            Broadcast(netCheckActivity.Serialize());
-        }
-        else
-        {
-            NetCheckActivity netCheckActivity = new NetCheckActivity();
-            netCheckActivity.SetClientId(actualClientId);
-
-
-            SendToServer(netCheckActivity.Serialize());
-        }
-
         if (isServer)
         {
             using (var iterator = clients.GetEnumerator())
@@ -451,6 +466,36 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             lastMessageReceivedFromServer++;
         }
 
+        if (clients.Count == 0 && port != 51000)
+        {
+            timer++;
+            if (timer >= timeOutServer)
+            {
+                Application.Quit();
+            }
+        }
+        else
+        {
+            timer = 0;
+        }
+    }
+
+    void SendCheckMessageActivity()
+    {
+        if (isServer)
+        {
+            NetCheckActivity netCheckActivity = new NetCheckActivity((DateTime.Now.Ticks, currentLatency));
+            netCheckActivity.SetClientId(-1);
+
+            Broadcast(netCheckActivity.Serialize());
+        }
+        else
+        {
+            NetCheckActivity netCheckActivity = new NetCheckActivity((DateTime.Now.Ticks, currentLatency));
+            netCheckActivity.SetClientId(actualClientId);
+
+            SendToServer(netCheckActivity.Serialize());
+        }
 
         if (isServer)
         {
@@ -462,7 +507,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                     if (lastMessageReceivedFromClients[receiverClientId] >= timeUntilDisconnection)
                     {
-
                         RemoveClient(receiverClientId);
 
                         NetDisconnection netDisconnection = new NetDisconnection();
@@ -482,21 +526,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 SendToServer(netDisconnection.Serialize());
             }
-        }
-
-        UnityEngine.Debug.Log(clients.Count);
-
-        if (clients.Count == 0)
-        {
-            timer++;
-            if (timer >= timeOutServer)
-            {
-                Application.Quit();
-            }
-        }
-        else
-        {
-            timer = 0;
         }
     }
 
