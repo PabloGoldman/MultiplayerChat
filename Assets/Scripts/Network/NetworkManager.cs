@@ -58,13 +58,13 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private Dictionary<int, int> lastMessageReceivedFromClients = new Dictionary<int, int>();
 
     int maximumNumberOfUsers = 2;
-    float timeOutServer = 30;
+    float timeOutServer = 15;
     float timer = 0;
 
     private string appName;
     bool nextServerIsActive = false;
     bool firtStartClient = true;
-
+    Process process;
 
     void Awake()
     {
@@ -194,8 +194,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
         startInfo.Arguments = numberPort.ToString();
 
-        Process process = Process.Start(startInfo);
-        appName = process.ProcessName;
+         process = Process.Start(startInfo);
+       // appName = process.ProcessName;
+
+        nextServerIsActive = true;
+
 
         //Aca habria un loading screen o algo asi
         yield return new WaitForSeconds(8.0f);
@@ -216,6 +219,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 if (CheckServerIsFull())
                 {
+                    UnityEngine.Debug.Log(nextServerIsActive);
+
                     if (nextServerIsActive) //si existe
                     {
                         int numberPort = port;
@@ -392,37 +397,15 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         if (connection != null)
             connection.FlushReceiveData();
 
-        try
+
+        if (process != null && !process.HasExited)
         {
-            bool appActive = false;
-            foreach (Process p in Process.GetProcesses())
-            {
-                if (p.ProcessName == appName)
-                {
-                    appActive = true;
-                    break;
-                }
-            }
-
-            if (appActive)
-            {
-                nextServerIsActive = true;
-            }
-            else
-            {
-                nextServerIsActive = false;
-            }
-
+            nextServerIsActive = true;
         }
-        catch (Exception)
+        else
         {
-
-            //   UnityEngine.Debug.Log("No esta entrando");
+            nextServerIsActive = false;
         }
-
-        UnityEngine.Debug.Log(nextServerIsActive);
-
-
     }
 
     void SendCheckMessageActivity()
@@ -493,6 +476,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             }
         }
 
+        UnityEngine.Debug.Log(clients.Count);
 
         if (clients.Count == 0)
         {
