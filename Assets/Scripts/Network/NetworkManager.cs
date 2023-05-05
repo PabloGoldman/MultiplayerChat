@@ -233,27 +233,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 {
                     ConnectToServer(data, ip);
                 }
-
                 break;
 
             case MessageType.Console:
 
-                NetMessage netMessage = new NetMessage(data);
-
-                if (isServer)
-                {
-                    Broadcast(data);
-                }
-
-                string text = "";
-                char[] aux = netMessage.GetData();
-
-                for (int i = 0; i < netMessage.GetData().Length; i++)
-                {
-                    text += aux[i];
-                }
-
-                ChatScreen.Instance.messages.text += text + System.Environment.NewLine;
+                UpdateChatText(data);
 
                 break;
 
@@ -280,7 +264,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 lastMessageRead[messageId]++;
                 int currentMessage = NetVector3.GetLastMessage();
 
-                if (lastMessageRead[messageId] < currentMessage)
+                if (CheckForLastMessage(messageId, currentMessage))
                 {
                     lastMessageRead[messageId] = currentMessage;
                 }
@@ -317,9 +301,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
             case MessageType.ThereIsNoPlace:
 
-                connection.Close();
-                NetThereIsNoPlace netThereIsNoPlace = new NetThereIsNoPlace(data);
-                StartClient(ipAddress, netThereIsNoPlace.GetData());
+                MoveToNextPortServer(data);
                 break;
 
             default:
@@ -328,12 +310,44 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         }
     }
 
+    private bool CheckForLastMessage(int messageId, int currentMessage)
+    {
+        return lastMessageRead[messageId] < currentMessage;
+    }
+
+    private void UpdateChatText(byte[] data)
+    {
+        NetMessage netMessage = new NetMessage(data);
+
+        if (isServer)
+        {
+            Broadcast(data);
+        }
+
+        string text = "";
+        char[] aux = netMessage.GetData();
+
+        for (int i = 0; i < netMessage.GetData().Length; i++)
+        {
+            text += aux[i];
+        }
+
+        ChatScreen.Instance.messages.text += text + System.Environment.NewLine;
+    }
+
     private void ConnectToNextServer(IPEndPoint ip)
     {
         int numberPort = port;
         numberPort++;
         NetThereIsNoPlace thereIsNoPlace = new NetThereIsNoPlace(numberPort);
         Broadcast(thereIsNoPlace.Serialize(), ip);
+    }
+
+    private void MoveToNextPortServer(byte[] data)
+    {
+        connection.Close();
+        NetThereIsNoPlace netThereIsNoPlace = new NetThereIsNoPlace(data);
+        StartClient(ipAddress, netThereIsNoPlace.GetData());
     }
 
     private void ConnectToServer(byte[] data, IPEndPoint ip)
