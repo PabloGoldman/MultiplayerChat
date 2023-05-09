@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using UnityEngine;
 
@@ -68,10 +69,21 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     bool nextServerIsActive = false;
     bool firtStartClient = true;
-    Process process;
+    Process nextServerApplication;
+
+    string serverBuildPath;
 
     void Awake()
     {
+        string baseFolderPath = Path.GetFullPath(Application.dataPath + "/../..");
+        serverBuildPath = baseFolderPath + "/Server/MultiplayerChat.exe";
+
+        //string serverBuildDirectory = Path.GetDirectoryName(serverBuildPath);
+        //Directory.CreateDirectory(serverBuildDirectory);
+
+        // serverBuildPath = "C:/Users/Admin/Desktop/Proyectos Unity/MultiplayerChatProjects/Builds/Server/MultiplayerChat.exe";
+
+        UnityEngine.Debug.Log(serverBuildPath);
 #if UNITY_SERVER
         port = 51000;
 
@@ -210,10 +222,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         ProcessStartInfo startInfo = new ProcessStartInfo();
 
-        startInfo.FileName = "D:/Users/DEDSComputacion/Desktop/Multijugador/MPChat/Builds/Server/MultiplayerChat.exe";
+        startInfo.FileName = serverBuildPath;
         startInfo.Arguments = numberPort.ToString();
 
-        process = Process.Start(startInfo);
+        nextServerApplication = Process.Start(startInfo);
     }
 
     public void OnReceiveData(byte[] data, IPEndPoint ip)
@@ -437,14 +449,16 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     void CheckNextServerActivity()
     {
-        if (process != null && !process.HasExited)
-        {
-            nextServerIsActive = true;
-        }
-        else
-        {
-            nextServerIsActive = false;
-        }
+        nextServerIsActive = (nextServerApplication != null && !nextServerApplication.HasExited);
+
+        //if (nextServerApplication != null && !nextServerApplication.HasExited)
+        //{
+        //    nextServerIsActive = true;
+        //}
+        //else
+        //{
+        //    nextServerIsActive = false;
+        //}
     }
 
     void AddTime()
