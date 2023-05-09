@@ -447,19 +447,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         SendCheckMessageActivity();
     }
 
-    void CheckNextServerActivity()
-    {
-        nextServerIsActive = (nextServerApplication != null && !nextServerApplication.HasExited);
-
-        //if (nextServerApplication != null && !nextServerApplication.HasExited)
-        //{
-        //    nextServerIsActive = true;
-        //}
-        //else
-        //{
-        //    nextServerIsActive = false;
-        //}
-    }
+    void CheckNextServerActivity() => nextServerIsActive = (nextServerApplication != null && !nextServerApplication.HasExited);
+    //{
+    //    nextServerIsActive = (nextServerApplication != null && !nextServerApplication.HasExited);
+    //}
 
     void AddTime()
     {
