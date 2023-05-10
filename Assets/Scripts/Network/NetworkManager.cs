@@ -62,8 +62,14 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     float lastLatencyReceivedFromServer = 0;
     float currentLatency;
 
-    private Dictionary<byte[], int> lastPackageReceivedFromClients = new Dictionary<byte[], int>();
-    private Dictionary<byte[], int> lastPackageSendFromClients =     new Dictionary<byte[], int>();
+   // private Dictionary<int, byte[]> lastPackageReceivedFromClients = new Dictionary<int, byte[]>();
+    //private Dictionary<int, byte[]> lastPackageSendFromClients = new Dictionary<int, byte[]>();
+    Queue<(int, byte[])> lastPackageReceivedFromClients = new Queue<(int, byte[])>();
+    Queue<(int, byte[])> lastPackageSendFromClients =     new Queue<(int, byte[])>();
+
+    Queue<byte[]> lastPackageRecivedToServer = new Queue<byte[]>();
+    Queue<byte[]> lastPackageSendToServer = new Queue<byte[]>();
+
 
     int maximumNumberOfUsers = 2;
     float timeOutServer = 15;
@@ -78,14 +84,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     void Awake()
     {
         string baseFolderPath = Path.GetFullPath(Application.dataPath + "/../..");
-        serverBuildPath = baseFolderPath + "/Server/MultiplayerChat.exe";
+        serverBuildPath = baseFolderPath + "/Builds/Server/MultiplayerChat.exe";
 
-        //string serverBuildDirectory = Path.GetDirectoryName(serverBuildPath);
-        //Directory.CreateDirectory(serverBuildDirectory);
-
-        // serverBuildPath = "C:/Users/Admin/Desktop/Proyectos Unity/MultiplayerChatProjects/Builds/Server/MultiplayerChat.exe";
-
-        UnityEngine.Debug.Log(serverBuildPath);
 #if UNITY_SERVER
         port = 51000;
 
@@ -151,6 +151,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             UnityEngine.Debug.Log("Adding client: " + ip.Address);
 
             clients.Add(newClientID, new Client(ip, newClientID, Time.realtimeSinceStartup));
+            ipToId.Add(ip, newClientID);
             lastMessageRead.Add(newClientID, 0);
             lastMessageReceivedFromClients.Add(newClientID, 0);
             lastLatencyReceivedFromClients.Add(newClientID, 0);
@@ -191,6 +192,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             Destroy(cubes[idToRemove]);
 
+            ipToId.Remove(clients[idToRemove].ipEndPoint);
             clients.Remove(idToRemove);
             cubes.Remove(idToRemove);
             lastMessageRead.Remove(idToRemove);
@@ -233,8 +235,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public void OnReceiveData(byte[] data, IPEndPoint ip)
     {
         int messageId = MessageChecker.Instance.CheckClientId(data);
-
-        lastPackageReceivedFromClients.Add(data, messageId);
 
         switch (MessageChecker.Instance.CheckMessageType(data))
         {
@@ -324,7 +324,9 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 NetCheckActivity netCheckActivity = new NetCheckActivity(data);
 
-                currentLatency = DateTime.Now.Ticks - netCheckActivity.GetData().Item1;
+                
+                double currentLatencyInDouble = (DateTime.Now.Ticks - netCheckActivity.GetData().Item1) / 10000000.0;
+                currentLatency = (float)currentLatencyInDouble;
 
                 if (isServer)
                 {
@@ -346,6 +348,17 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 UnityEngine.Debug.Log("No llego ningun dato con \"MessaggeType\"");
                 break;
         }
+
+        if (isServer)
+        {
+            //  lastPackageReceivedFromClients.Add(messageId, data);
+            lastPackageReceivedFromClients.Enqueue((messageId, data));
+        }
+        else
+        {
+            lastPackageRecivedToServer.Enqueue(data);
+        }
+
     }
 
     private bool CheckForLastMessage(int messageId, int currentMessage)
@@ -362,7 +375,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         NetMessage.Deserialize(data, out aux, out netMessageSum);
 
-        for (int i = 0; i < aux.Length; i++)    
+        for (int i = 0; i < aux.Length; i++)
         {
             sum += (int)aux[i];
         }
@@ -434,11 +447,15 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public void SendToServer(byte[] data)
     {
         connection.Send(data);
+        lastPackageSendToServer.Enqueue(data);
     }
 
     public void Broadcast(byte[] data, IPEndPoint ip)
     {
         connection.Send(data, ip);
+       // lastPackageSendFromClients.Add(ipToId[ip], data);
+   
+     //   lastPackageSendFromClients.Enqueue((ipToId[ip], data));
     }
 
     public void Broadcast(byte[] data)
@@ -448,6 +465,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             while (iterator.MoveNext())
             {
                 connection.Send(data, iterator.Current.Value.ipEndPoint);
+                ///lastPackageSendFromClients.Add(ipToId[iterator.Current.Value.ipEndPoint], data);
+                lastPackageSendFromClients.Enqueue((ipToId[iterator.Current.Value.ipEndPoint], data));
             }
         }
     }
@@ -458,6 +477,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             connection.FlushReceiveData();
 
         CheckNextServerActivity();
+       // RemoveOldsPackages();
     }
 
     private void FixedUpdate()
@@ -473,6 +493,72 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     //{
     //    nextServerIsActive = (nextServerApplication != null && !nextServerApplication.HasExited);
     //}
+
+    void RemoveOldsPackages()
+    {
+        float[] timer = new float[4];
+        float maxTime = currentLatency * 5;
+
+        // UnityEngine.Debug.Log("lastPackageReceivedFromClients: " + lastPackageReceivedFromClients.Count);
+        // UnityEngine.Debug.Log("lastPackageSendFromClients: " + lastPackageSendFromClients.Count);
+        // UnityEngine.Debug.Log("lastPackageRecivedToServer: " + lastPackageRecivedToServer.Count);
+        // UnityEngine.Debug.Log("lastPackageSendToServer: " + lastPackageSendToServer.Count);
+       // UnityEngine.Debug.Log(currentLatency);
+
+
+        if (isServer)
+        {
+            if (lastPackageReceivedFromClients.Count > 0)
+            {
+                timer[0] += Time.deltaTime;
+
+                if (timer[0] >= maxTime)
+                {
+                    timer[0] -= maxTime;
+
+                    lastPackageReceivedFromClients.Dequeue();
+                }
+            }
+
+            if (lastPackageSendFromClients.Count > 0)
+            {
+                timer[1] += Time.deltaTime;
+
+                if (timer[1] >= maxTime)
+                {
+                    timer[1] -= maxTime;
+
+                    lastPackageSendFromClients.Dequeue();
+                }
+            }
+        }
+        else
+        {
+            if (lastPackageRecivedToServer.Count > 0)
+            {
+                timer[2] += Time.deltaTime;
+
+                if (timer[2] >= maxTime)
+                {
+                    timer[2] -= maxTime;
+
+                    lastPackageRecivedToServer.Dequeue();
+                }
+            }
+
+            if (lastPackageSendToServer.Count > 0)
+            {
+                timer[3] += Time.deltaTime;
+
+                if (timer[3] >= maxTime)
+                {
+                    timer[3] -= maxTime;
+
+                    lastPackageSendToServer.Dequeue();
+                }
+            }
+        }
+    }
 
     void AddTime()
     {
