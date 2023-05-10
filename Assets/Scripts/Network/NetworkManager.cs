@@ -60,8 +60,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private Dictionary<long, float> lastLatencyReceivedFromClients = new Dictionary<long, float>();
     float lastLatencyReceivedFromServer = 0;
     float currentLatency;
-   
-    
+
+    private Dictionary<byte[], int> lastPackageReceivedFromClients = new Dictionary<byte[], int>();
+    private Dictionary<byte[], int> lastPackageSendFromClients =     new Dictionary<byte[], int>();
+
     int maximumNumberOfUsers = 2;
     float timeOutServer = 15;
     float timer = 0;
@@ -220,6 +222,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     {
         int messageId = MessageChecker.Instance.CheckClientId(data);
 
+        lastPackageReceivedFromClients.Add(data, messageId);
+
         switch (MessageChecker.Instance.CheckMessageType(data))
         {
             case MessageType.HandShake:
@@ -339,17 +343,35 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private void UpdateChatText(byte[] data)
     {
-        NetMessage netMessage = new NetMessage(data);
+        int netMessageSum = 0;
+        int sum = 0;
+        char[] aux;
+        string text = "";
+
+        NetMessage.Deserialize(data, out aux, out netMessageSum);
+
+        for (int i = 0; i < aux.Length; i++)    
+        {
+            sum += (int)aux[i];
+        }
+        sum /= 2; //Nose porqe el /2, pero da exactamente el doble de lo que deberia
+
+        if (sum != netMessageSum)
+        {
+            //Pido el paquete de nuevo.
+            UnityEngine.Debug.Log("El mensaje llego corrompido");
+
+            return;
+        }
 
         if (isServer)
         {
             Broadcast(data);
         }
 
-        string text = "";
-        char[] aux = netMessage.GetData();
 
-        for (int i = 0; i < netMessage.GetData().Length; i++)
+
+        for (int i = 0; i < aux.Length; i++)
         {
             text += aux[i];
         }

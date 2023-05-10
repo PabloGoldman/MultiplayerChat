@@ -35,12 +35,25 @@ public class NetMessage
         for (int i = 0 ; i < outData.Length; i++)
         {
             outData[i] = BitConverter.ToChar(message, (2 * sizeof(int) + i * sizeof(char))); 
-            UnityEngine.Debug.Log(outData[i]);
         }
 
 
         return outData;
     }
+
+    public static void Deserialize(byte[] message, out char[] outData, out int sum)
+    {
+        outData = new char[(message.Length - 2 * sizeof(int)) / sizeof(char)];
+        int dataSize = outData.Length * sizeof(char);
+
+        for (int i = 0; i < outData.Length; i++)
+        {
+            outData[i] = BitConverter.ToChar(message, 2 * sizeof(int) + i * sizeof(char));
+        }
+
+        sum = BitConverter.ToInt32(message, sizeof(int) + dataSize );
+    }
+
 
     public MessageType GetMessageType()
     {
@@ -54,10 +67,14 @@ public class NetMessage
         outData.AddRange(BitConverter.GetBytes((int)GetMessageType()));
         outData.AddRange(BitConverter.GetBytes(clientId));
 
+        int sum = 0;
         for (int i = 0; i < data.Length; i++)
         {
             outData.AddRange(BitConverter.GetBytes(data[i]));
+            sum += (int)data[i];
         }
+
+        outData.AddRange(BitConverter.GetBytes(sum));
 
         return outData.ToArray();
     }
