@@ -62,10 +62,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     float lastLatencyReceivedFromServer = 0;
     float currentLatency;
 
-   // private Dictionary<int, byte[]> lastPackageReceivedFromClients = new Dictionary<int, byte[]>();
+    // private Dictionary<int, byte[]> lastPackageReceivedFromClients = new Dictionary<int, byte[]>();
     //private Dictionary<int, byte[]> lastPackageSendFromClients = new Dictionary<int, byte[]>();
     Queue<(int, byte[])> lastPackageReceivedFromClients = new Queue<(int, byte[])>();
-    Queue<(int, byte[])> lastPackageSendFromClients =     new Queue<(int, byte[])>();
+    Queue<(int, byte[])> lastPackageSendFromClients = new Queue<(int, byte[])>();
 
     Queue<byte[]> lastPackageRecivedToServer = new Queue<byte[]>();
     Queue<byte[]> lastPackageSendToServer = new Queue<byte[]>();
@@ -136,7 +136,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         handShakeMesage.SetClientId(0);
         SendToServer(handShakeMesage.Serialize());
 
-        UnityEngine.Debug.Log(firtStartClient);
         if (firtStartClient)
         {
             InvokeRepeating(nameof(AddTime), 1.0f, 1.0f);
@@ -192,7 +191,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             Destroy(cubes[idToRemove]);
 
-            ipToId.Remove(clients[idToRemove].ipEndPoint);
+       //     ipToId.Remove(clients[idToRemove].ipEndPoint);
             clients.Remove(idToRemove);
             cubes.Remove(idToRemove);
             lastMessageRead.Remove(idToRemove);
@@ -324,7 +323,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
                 NetCheckActivity netCheckActivity = new NetCheckActivity(data);
 
-                
+
                 double currentLatencyInDouble = (DateTime.Now.Ticks - netCheckActivity.GetData().Item1) / 10000000.0;
                 currentLatency = (float)currentLatencyInDouble;
 
@@ -342,6 +341,10 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             case MessageType.ThereIsNoPlace:
 
                 MoveToNextPortServer(data);
+                break;
+
+            case MessageType.RepeatMessage:
+
                 break;
 
             default:
@@ -393,8 +396,6 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         {
             Broadcast(data);
         }
-
-
 
         for (int i = 0; i < aux.Length; i++)
         {
@@ -453,9 +454,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     public void Broadcast(byte[] data, IPEndPoint ip)
     {
         connection.Send(data, ip);
-       // lastPackageSendFromClients.Add(ipToId[ip], data);
-   
-     //   lastPackageSendFromClients.Enqueue((ipToId[ip], data));
+
+        //if (ipToId.Count > 0)
+        //{
+        //    lastPackageSendFromClients.Enqueue((ipToId[ip], data));
+        //}
     }
 
     public void Broadcast(byte[] data)
@@ -466,7 +469,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             {
                 connection.Send(data, iterator.Current.Value.ipEndPoint);
                 ///lastPackageSendFromClients.Add(ipToId[iterator.Current.Value.ipEndPoint], data);
-                lastPackageSendFromClients.Enqueue((ipToId[iterator.Current.Value.ipEndPoint], data));
+             //   lastPackageSendFromClients.Enqueue((ipToId[iterator.Current.Value.ipEndPoint], data));
             }
         }
     }
@@ -477,7 +480,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             connection.FlushReceiveData();
 
         CheckNextServerActivity();
-       // RemoveOldsPackages();
+        // RemoveOldsPackages();
     }
 
     private void FixedUpdate()
@@ -499,11 +502,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         float[] timer = new float[4];
         float maxTime = currentLatency * 5;
 
-        // UnityEngine.Debug.Log("lastPackageReceivedFromClients: " + lastPackageReceivedFromClients.Count);
-        // UnityEngine.Debug.Log("lastPackageSendFromClients: " + lastPackageSendFromClients.Count);
-        // UnityEngine.Debug.Log("lastPackageRecivedToServer: " + lastPackageRecivedToServer.Count);
-        // UnityEngine.Debug.Log("lastPackageSendToServer: " + lastPackageSendToServer.Count);
-       // UnityEngine.Debug.Log(currentLatency);
+         UnityEngine.Debug.Log("lastPackageReceivedFromClients: " + lastPackageReceivedFromClients.Count);
+         UnityEngine.Debug.Log("lastPackageSendFromClients: " + lastPackageSendFromClients.Count);
+         UnityEngine.Debug.Log("lastPackageRecivedToServer: " + lastPackageRecivedToServer.Count);
+         UnityEngine.Debug.Log("lastPackageSendToServer: " + lastPackageSendToServer.Count);
+         UnityEngine.Debug.Log(currentLatency);
 
 
         if (isServer)

@@ -43,7 +43,7 @@ public class Cube : MonoBehaviour
                 }
 
                 // Manda la posicion al server
-                SendPosition();
+               SendPosition();
             }
         }
     }

@@ -11,7 +11,8 @@ public enum MessageType
     Position = 1,
     NewCustomerNotice = 2,
     Disconnection = 3,
-    ThereIsNoPlace = 4
+    ThereIsNoPlace = 4,
+    RepeatMessage = 5
 };
 
 public interface IMessage <T>
