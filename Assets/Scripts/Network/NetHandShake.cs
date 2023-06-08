@@ -57,4 +57,9 @@ public class NetHandShake : IMessage<(long, int)>
 
         return outData.ToArray();
     }
+
+    public (long, int) GetData()
+    {
+        return data;
+    }
 }
