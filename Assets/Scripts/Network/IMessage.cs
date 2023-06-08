@@ -1,10 +1,9 @@
 
 public enum MessageType
 {
-    ThereIsNoPlace = -7,
-    Disconnection = -6,
-    NewCustomerNotice = -5,
-    Position = -4,
+    ThereIsNoPlace = -6,
+    Disconnection = -5,
+    NewCustomerNotice = -4,
     CheckActivity = -3,
     SetClientID = -2,
     HandShake = -1,
@@ -14,6 +13,7 @@ public enum MessageType
     boolMessage  = 3,
     charMessage  = 4,
     vector3Message = 5,
+    Position = 6,
 };
 
 public interface IMessage<T>
