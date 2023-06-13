@@ -7,7 +7,7 @@ using UnityEngine;
 public class UpdateGameplayVariables 
 {
 
-    BindingFlags intanceDeclaredOnlyFileter = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+    BindingFlags intanceDeclaredOnlyFileter = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
 
 
     public void ProcessGameplayMessage(byte[] message, object obj, Type type)

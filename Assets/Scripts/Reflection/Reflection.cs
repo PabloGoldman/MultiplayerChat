@@ -8,7 +8,7 @@ public class Reflection : MonoBehaviour
 {
     [SerializeField] GameManager gameManager;
 
-    BindingFlags intanceDeclaredOnlyFileter = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+    BindingFlags intanceDeclaredOnlyFileter = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
 
     private void Update()
     {
