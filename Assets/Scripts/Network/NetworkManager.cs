@@ -41,7 +41,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public Action<byte[], IPEndPoint> OnReceiveEvent;
 
-    private UdpConnection connection;
+    public UdpConnection connection;
 
     private readonly Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
@@ -336,6 +336,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             case MessageType.ThereIsNoPlace:
 
                 MoveToNextPortServer(data);
+                break;
+
+            case MessageType.Gameplay:
+
+                if (isServer)
+                {
+                    Broadcast(data);
+                }
+                else
+                {
+                    UpdateGameplayVariables updateGameplayVariables = new UpdateGameplayVariables();
+                    updateGameplayVariables.ProcessGameplayMessage(data, null, null);
+                }
+
                 break;
 
             default:

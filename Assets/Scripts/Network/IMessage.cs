@@ -7,14 +7,17 @@ public enum MessageType
     CheckActivity = -3,
     SetClientID = -2,
     HandShake = -1,
+
     Console = 0,
     intMessage = 1,
     floatMessage = 2,
-    boolMessage  = 3,
-    charMessage  = 4,
-    vector3Message = 5,
+    boolMessage = 3,
+    charMessage = 4,
     Position = 6,
+    Gameplay = 7
 };
+
+
 
 public interface IMessage<T>
 {

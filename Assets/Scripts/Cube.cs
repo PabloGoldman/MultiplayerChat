@@ -6,6 +6,8 @@ public class Cube : MonoBehaviour
     public int clientId;
     public float speed = 5f;
 
+    [Net] public int vida = 10;
+
     void Update()
     {
         if (!NetworkManager.Instance.isServer)

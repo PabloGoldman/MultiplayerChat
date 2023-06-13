@@ -12,16 +12,24 @@ public class Reflection : MonoBehaviour
 
     private void Update()
     {
-        List<List<byte>> GameManagerAsByte = Inspect(gameManager, typeof(GameManager));
+        if (!NetworkManager.Instance.isServer && NetworkManager.Instance.connection != null )
+        {
 
-        // Recorro GameManagerAsByte y envio los paquetes
+            List<List<byte>> GameManagerAsByte = Inspect(gameManager, typeof(GameManager));
+
+            // Recorro GameManagerAsByte y envio los paquetes
+            foreach (List<byte> list in GameManagerAsByte)
+            {
+                NetworkManager.Instance.SendToServer(list.ToArray());
+            }
+        }
     }
 
     private List<List<byte>> Inspect(object obj, Type type, string fieldName = "")
     {
         List<List<byte>> output = new List<List<byte>>();
 
-        foreach (FieldInfo field in obj.GetType().GetFields(intanceDeclaredOnlyFileter))
+        foreach (FieldInfo field in type.GetFields(intanceDeclaredOnlyFileter))
         {
             IEnumerable<Attribute> attributes = field.GetCustomAttributes();
 
@@ -60,7 +68,7 @@ public class Reflection : MonoBehaviour
                 }
             }
 
-            //if (typeof(INet).IsAssignableFrom(type))
+            //if (typeof(INet).IsAssignableFrom(type))   //Para que el usuario mande cosas a serializar
             //{
             //    ConvertToMsg(output, (type as INet).Serialize(), fieldName);
             //}
@@ -80,14 +88,11 @@ public class Reflection : MonoBehaviour
 
     private void ConvertToMsg(List<List<byte>> MsgStack, object obj, string fieldName)
     {
+        char[] fielNameChar = fieldName.ToCharArray();
 
         if (obj is int)
         {
-            List<byte> intMsg = new List<byte>();
-
-            IntMessage intMessage = new IntMessage((int)obj);
-            intMsg.AddRange(intMessage.Serialize());
-            MsgStack.AddRange(MsgStack);
+            MsgStack.Add(((int)obj).ToMsg(fielNameChar));
         }
 
         else if (obj is float)
@@ -106,6 +111,10 @@ public class Reflection : MonoBehaviour
         else if (obj is Vector3)
         {
             Debug.Log(fieldName + ": " + (Vector3)obj);
+        }
+        else if (obj is byte[])
+        {
+
         }
         else
         {

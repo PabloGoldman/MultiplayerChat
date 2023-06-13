@@ -38,7 +38,7 @@ public class NetNewCustomerNotice : IMessage<(long, int)>
         return MessageType.NewCustomerNotice;
     }
 
-    public (long, int) getData()
+    public (long, int) GetData()
     {
         return data;
     }
