@@ -47,8 +47,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
     private readonly Dictionary<IPEndPoint, int> ipToId = new Dictionary<IPEndPoint, int>();
 
     // Prefab del cubo que se va a generar al conectarse un cliente
-    public GameObject cubePrefab;
-    private Dictionary<int, GameObject> cubes = new Dictionary<int, GameObject>();
+    public GameObject playerPrefab;
+    private Dictionary<int, Player> playerDictionary = new Dictionary<int, Player>();
 
     public int serverClientId = 0; // Se genera en el primer handshake
     public int actualClientId = 0;
@@ -177,20 +177,23 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private void GenerateCubeForClient(int clientId)
     {
-        GameObject cube = Instantiate(cubePrefab);
-        cube.name = "Cube_" + clientId;
-        cube.GetComponent<Cube>().clientId = clientId;
-        cubes.Add(clientId, cube);
+        GameObject playerGO = Instantiate(playerPrefab);
+        playerGO.name = "Player_" + clientId;
+
+        Player player = playerGO.GetComponent<Player>();
+
+        player.clientId = clientId;
+        playerDictionary.Add(clientId, player);
     }
 
     private void RemoveClient(int idToRemove)
     {
         if (clients.ContainsKey(idToRemove))
         {
-            Destroy(cubes[idToRemove]);
+            Destroy(playerDictionary[idToRemove]);
 
             clients.Remove(idToRemove);
-            cubes.Remove(idToRemove);
+            playerDictionary.Remove(idToRemove);
             lastMessageRead.Remove(idToRemove);
             lastMessageReceivedFromClients.Remove(idToRemove);
             lastLatencyReceivedFromClients.Remove(idToRemove);
@@ -289,7 +292,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
                 }
                 else
                 {
-                    UpdateCubePosition(cubes[messageId].GetComponent<Cube>().clientId, data);
+                    UpdateCubePosition(playerDictionary[messageId].GetComponent<Cube>().clientId, data);
                 }
                 break;
 
@@ -550,20 +553,20 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     private void UpdateCubePosition(int clientId, byte[] data)
     {
-        if (!cubes.ContainsKey(clientId))
+        if (!playerDictionary.ContainsKey(clientId))
         {
             UnityEngine.Debug.LogWarning("Cube for client ID " + clientId + " not found in the dictionary.");
             return;
         }
 
         // Toma el cubo del cliente
-        GameObject cube = cubes[clientId];
+        GameObject playerTransform = playerDictionary[clientId].gameObject;
 
         // Deserealiza la data en un NetVector3
         NetVector3 netPosition = new NetVector3(data);
 
         // Setea la posicion del cubo a la posicion que recibio del cliente
-        cube.transform.position = netPosition.GetData();
+        playerTransform.transform.position = netPosition.GetData();
 
         // Broadcastea la posicion del cubo al resto de los clientes
 

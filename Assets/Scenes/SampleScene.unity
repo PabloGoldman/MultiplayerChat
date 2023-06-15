@@ -255,7 +255,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   TimeOut: 30
-  cubePrefab: {fileID: 6775669341023326954, guid: 48ef3470206e1a641a83c9ac8d32cb4a, type: 3}
+  playerPrefab: {fileID: 6775669341023326954, guid: 48ef3470206e1a641a83c9ac8d32cb4a, type: 3}
   serverClientId: 0
   actualClientId: 0
 --- !u!4 &180350410
