@@ -11,6 +11,4 @@ public class Player : MonoBehaviour
     [Net] public int life;
     [Net] public int damage;
     [Net] public int points;
-
-
 }
