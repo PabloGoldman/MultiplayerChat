@@ -6,8 +6,13 @@ public class Cube : MonoBehaviour
     public int clientId;
     public float speed = 5f;
 
-    [Net] public int vida = 10;
+    //  [Net] public int vida = 10;
 
+
+    private void Start()
+    {
+        clientId = transform.GetComponent<Player>().clientId;
+    }
     void Update()
     {
         if (!NetworkManager.Instance.isServer)

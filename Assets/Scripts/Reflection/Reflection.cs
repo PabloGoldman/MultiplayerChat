@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class Reflection : MonoBehaviour
@@ -46,8 +47,8 @@ public class Reflection : MonoBehaviour
                             int i = 0;
                             foreach (DictionaryEntry entry in (value as IDictionary))
                             {
-                                ConvertToMsg(output, entry.Key, fieldName + field.Name + "Key [ " + i.ToString() + "]");
-                                ConvertToMsg(output, entry.Value, fieldName + field.Name + "Value [ " + i.ToString() + "]");
+                                ConvertToMsg(output, entry.Key, fieldName + field.Name +   "Key [" + i.ToString() + "]");
+                                ConvertToMsg(output, entry.Value, fieldName + field.Name + "Value [" + i.ToString() + "]");
                                 i++;
                             }
                         }

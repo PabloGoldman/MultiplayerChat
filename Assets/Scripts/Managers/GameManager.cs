@@ -6,14 +6,21 @@ using UnityEngine;
 [NodeHeader]
 public class GameManager : MonoBehaviourSingleton<GameManager>
 {
-     public GameObject playerPrefab;
+     public Player playerPrefab;
      public GameObject enemyPrefab;
 
-    [Net] Player player1;
+    Player player1;
+    [Net] public Dictionary<int, Player> players;
+
+    private void Awake()
+    {
+        players = new Dictionary<int, Player>();
+    }
+
 
     private void Start()
     {
-        player1 = Instantiate(playerPrefab).AddComponent<Player>();
+        player1 = Instantiate(playerPrefab);
         player1.life = 44;
         player1.damage = 76;
         player1.playerName = "pepe";
