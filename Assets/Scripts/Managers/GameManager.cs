@@ -9,8 +9,9 @@ public class GameManager : MonoBehaviourSingleton<GameManager>
      public Player playerPrefab;
      public GameObject enemyPrefab;
 
-    Player player1;
-    [Net] public Dictionary<int, Player> players;
+    [Net] public Player player1;
+     public Dictionary<int, Player> players;
+
 
     private void Awake()
     {

@@ -13,6 +13,6 @@ public class Player : MonoBehaviour
     GameObject playerPrefab;
 
     [Net] public int life;
-    [Net] public int damage;
+    [Net] public float damage;
     [Net] public int points;
 }

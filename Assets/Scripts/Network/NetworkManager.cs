@@ -39,6 +39,8 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
     public int TimeOut = 30;
 
+    int initalPort = 53000;
+
     public Action<byte[], IPEndPoint> OnReceiveEvent;
 
     public UdpConnection connection;
@@ -85,7 +87,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
 
         UnityEngine.Debug.Log(serverBuildPath);
 #if UNITY_SERVER
-        port = 52000;
+        port = initalPort;
 
         try
         {
@@ -184,7 +186,11 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
         playerGO.GetComponent<Cube>().clientId = clientId;
 
         player.clientId = clientId;
-        
+
+        player.damage = 10 * clientId;
+        player.life = 20 * clientId;
+        player.points = 30 * clientId;
+
         GameManager.Instance.players.Add(clientId, player);
     }
 
@@ -490,7 +496,7 @@ public class NetworkManager : MonoBehaviourSingleton<NetworkManager>, IReceiveDa
             lastMessageReceivedFromServer++;
         }
 
-        if (clients.Count == 0 && port != 52000)
+        if (clients.Count == 0 && port != initalPort)
         {
             timer++;
             if (timer >= timeOutServer)

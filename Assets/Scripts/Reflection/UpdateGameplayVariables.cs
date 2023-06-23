@@ -1,72 +1,123 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 
 public class UpdateGameplayVariables
 {
-
     BindingFlags intanceDeclaredOnlyFileter = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
 
     public void ProcessGameplayMessage(byte[] message, object obj)
     {
         string fieldPath = ReadFilePath(message);
+        
+        string className = "";
+        string fieldName = "";
 
-        string[] fields = fieldPath.Split(new[] { "///" }, StringSplitOptions.RemoveEmptyEntries);
-        string lastFieldName = "";
+        int pathIndex = fieldPath.IndexOf("///");
 
-        object currentObj = obj;
-        object previousObj = null;
-
-        foreach (string fieldName in fields)
+        if (pathIndex >= 0)
         {
-            previousObj = currentObj;
-
-            if (fieldName.Contains("Key") || fieldName.Contains("Value"))
-            {
-                Debug.Log("Es un diccionario");
-
-                string substring = fieldName.Substring(0, fieldName.IndexOf("Key") != -1 ? fieldName.IndexOf("Key") : fieldName.IndexOf("Value"));
-                ReadFieldDictionary(currentObj, substring, fieldName, message);
-            }
-            else if (fieldName.Contains("[") && fieldName.Contains("]"))
-            {
-                Debug.Log("Es una lista");
-            }
-            else
-            {
-                currentObj = ReadField(currentObj, fieldName);
-            }
-
-            if (currentObj == null)
-            {
-                // Manejo de error si el campo no existe o no se puede leer
-                break;
-            }
-
-            lastFieldName = fieldName;
+            className = fieldPath.Substring(0, pathIndex);
+            fieldName = fieldPath.Substring(pathIndex + 3); // +3 para omitir "///"
         }
 
-        ModifyVariable(previousObj, currentObj, message, lastFieldName);
+        object currentObj = obj;
+        bool isCollection = false;
+
+        if (className.Contains("Key") || className.Contains("Value")) // Diccionario
+        {
+            isCollection = true;
+            string DictionaryName = className.Substring(0, className.IndexOf("Key") != -1 ? className.IndexOf("Key") : className.IndexOf("Value"));
+           
+            int index;
+            string variableName;
+            ParseFilePath(fieldPath, out index, out variableName);
+
+            ReadFieldDictionary(currentObj, DictionaryName, index, variableName, message);
+        }
+        else if (className.Contains("[") && className.Contains("]")) // Coleccion
+        {
+            isCollection = true;
+            Debug.Log("Es una lista");
+        }
+        else
+        {
+            currentObj = ReadField(currentObj, className);
+        }
+
+        if (currentObj == null)
+        {
+            // Manejo de error si el campo no existe o no se puede leer
+        }
+
+        if (!isCollection)
+        {
+            FieldInfo field = currentObj.GetType().GetField(fieldName, intanceDeclaredOnlyFileter);
+            ModifyVariable(currentObj, message, field);
+        }
+
     }
 
-    object ReadFieldDictionary(object obj, string dictionaryName, string name, byte[] message)
+    object ReadFieldDictionary(object obj, string dictionaryName, int index, string nameField, byte[] message)
     {
+        if (nameField == null)
+        {
+            //Es una key
+            return null;
+        }
+
         FieldInfo field = obj.GetType().GetField(dictionaryName, intanceDeclaredOnlyFileter);
 
         if (field != null && typeof(IDictionary).IsAssignableFrom(field.FieldType))
         {
-            modifyDictionary(message, field, obj);
+            modifyDictionary(message, field, index, nameField, obj);
         }
-            return null;
+        return null;
     }
-    void modifyDictionary(byte[] message, FieldInfo field, object obj)
-    {
-        //hay que traducir el mensaje y setearlo en el obj
-        Debug.Log("es un diccionario");
+    void modifyDictionary(byte[] message, FieldInfo field, int index, string nameField, object obj)
+    {                          //Field del diccionario, ruta de la variable, nombre de la variable, instancia a cambiar
+
+
+        // Verificar si el campo es un diccionario
+        if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+        {
+            // Obtener el valor del campo
+            object fieldValue = field.GetValue(obj);
+
+            if (fieldValue != null && fieldValue is IDictionary dictionary)
+            {
+                // Obtener el enumerador de claves y valores
+                var keyEnumerator = dictionary.Keys.GetEnumerator();
+                var valueEnumerator = dictionary.Values.GetEnumerator();
+
+                // Mover el enumerador al índice deseado
+                for (int i = 0; i <= index; i++)
+                {
+                    if (!keyEnumerator.MoveNext() || !valueEnumerator.MoveNext())
+                    {
+                        // El índice está fuera de rango
+                        return;
+                    }
+                }
+
+                // Obtener la clave y el valor correspondientes al índice
+                var key = keyEnumerator.Current;
+                var value = valueEnumerator.Current;
+
+                Debug.Log(key);
+                Debug.Log(value);
+
+                FieldInfo fieldInfo = value.GetType().GetField(nameField, intanceDeclaredOnlyFileter);
+                ModifyVariable(value, message, fieldInfo);
+
+                // Realizar las operaciones deseadas con la clave y el valor obtenidos
+                // Por ejemplo, puedes usar key y value en la función setValue()
+
+                // setValue(key, value);
+            }
+        }
     }
 
     object ReadFieldCollection(object obj, string name)
@@ -74,6 +125,7 @@ public class UpdateGameplayVariables
 
         return null;
     }
+
     object ReadField(object obj, string name)
     {
         FieldInfo field = obj.GetType().GetField(name, intanceDeclaredOnlyFileter);
@@ -87,21 +139,18 @@ public class UpdateGameplayVariables
         return value;
     }
 
-    void ModifyVariable(object prevObj, object obj, byte[] message, string fieldName)
+    void ModifyVariable(object obj, byte[] message, FieldInfo field)
     {
-        FieldInfo field = prevObj.GetType().GetField(fieldName, intanceDeclaredOnlyFileter);
-
-        object value = field.GetValue(prevObj);
+        object value = field.GetValue(obj);
 
         if (MessageChecker.Instance.CheckClientId(message) == NetworkManager.Instance.actualClientId)
         {
             return;
         }
 
-
         if (value is int)
         {
-            field.SetValue(prevObj, message.ToInt());
+            field.SetValue(obj, message.ToInt());
             Debug.Log("llega un int");
         }
         else if (value is float)
@@ -126,8 +175,9 @@ public class UpdateGameplayVariables
         }
         else
         {
-
+            Debug.Log(value);
         }
+
 
     }
 
@@ -143,5 +193,31 @@ public class UpdateGameplayVariables
         }
 
         return new string(fieldName);
+    }
+
+    void ParseFilePath(string fieldPath, out int index, out string variableName)
+    {
+        index = 0;
+        variableName = "";
+
+        int indexStart = fieldPath.IndexOf('[');
+        int indexEnd = fieldPath.IndexOf(']');
+
+        if (indexStart >= 0 && indexEnd >= 0 && indexEnd > indexStart + 1)
+        {
+            string indexStr = fieldPath.Substring(indexStart + 1, indexEnd - indexStart - 1);
+            if (int.TryParse(indexStr, out index))
+            {
+                variableName = fieldPath.Substring(indexEnd + 4); // +4 para omitir "]///"
+            }
+            else
+            {
+                // No se pudo convertir el número entre corchetes en un int
+            }
+        }
+        else
+        {
+            // No se encontraron corchetes o están en una posición incorrecta en 'fieldPath'
+        }
     }
 }
